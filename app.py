@@ -1,12 +1,15 @@
 import streamlit as st
 import sqlite3
-import pandas as pd
 import folium
 from streamlit_folium import folium_static
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
+import openrouteservice as ors
+
+# Configura la API key de OpenRouteService
+ors_api_key = "TU_API_KEY_DE_OPENROUTESERVICE"  # Reemplaza con tu API key
 
 # Función para obtener coordenadas de una dirección
 def obtener_coordenadas(direccion):
@@ -55,6 +58,20 @@ def optimizar_ruta(matriz_distancias):
             index = solution.Value(routing.NextVar(index))
         return ruta
     else:
+        return None
+
+# Función para obtener la ruta real usando OpenRouteService
+def obtener_ruta_real(coordenadas, api_key):
+    client = ors.Client(key=api_key)
+    try:
+        ruta = client.directions(
+            coordinates=coordenadas,
+            profile='driving-car',  # Puedes cambiar a 'foot-walking' o 'cycling-regular'
+            format='geojson'
+        )
+        return ruta
+    except Exception as e:
+        st.error(f"Error al calcular la ruta: {e}")
         return None
 
 # Conectar a la base de datos
@@ -178,27 +195,34 @@ elif menu == "Ver Ruta Optimizada":
         ruta_optimizada = optimizar_ruta(matriz_distancias)
 
         if ruta_optimizada:
-            st.write("Ruta optimizada:", ruta_optimizada)
-
-            # Crear un mapa con Folium
-            mapa = folium.Map(location=[-16.3989, -71.5350], zoom_start=14)
+            st.write("Ruta optimizada:")
             for i, idx in enumerate(ruta_optimizada):
-                ubicacion = ubicaciones[idx]
-                folium.Marker(
-                    location=[ubicacion[1], ubicacion[2]],
-                    popup=f"Punto {i+1}: {ubicacion[0]}"
-                ).add_to(mapa)
+                st.write(f"{i+1}. {ubicaciones[idx][0]}")  # Muestra los nombres de las ubicaciones
 
-            # Dibujar la ruta optimizada
-            for i in range(len(ruta_optimizada) - 1):
-                punto_actual = ubicaciones[ruta_optimizada[i]]
-                punto_siguiente = ubicaciones[ruta_optimizada[i + 1]]
-                folium.PolyLine(
-                    locations=[[punto_actual[1], punto_actual[2]], [punto_siguiente[1], punto_siguiente[2]]],
-                    color="blue"
-                ).add_to(mapa)
+            # Obtener coordenadas en el orden optimizado
+            coordenadas_ruta = [[ubicaciones[idx][2], ubicaciones[idx][1]] for idx in ruta_optimizada]
 
-            # Mostrar el mapa en Streamlit
-            folium_static(mapa)
+            # Obtener la ruta real usando OpenRouteService
+            ruta_real = obtener_ruta_real(coordenadas_ruta, ors_api_key)
+
+            if ruta_real:
+                # Crear un mapa con Folium
+                mapa = folium.Map(location=[-16.3989, -71.5350], zoom_start=14)
+
+                # Dibujar la ruta real
+                folium.GeoJson(ruta_real, name="Ruta optimizada").add_to(mapa)
+
+                # Añadir marcadores para cada punto
+                for idx in ruta_optimizada:
+                    ubicacion = ubicaciones[idx]
+                    folium.Marker(
+                        location=[ubicacion[1], ubicacion[2]],
+                        popup=ubicacion[0]
+                    ).add_to(mapa)
+
+                # Mostrar el mapa en Streamlit
+                folium_static(mapa)
+            else:
+                st.error("No se pudo calcular la ruta real.")
         else:
             st.error("No se pudo optimizar la ruta.")
