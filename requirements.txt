@@ -1,5 +1,6 @@
 streamlit
 ortools
 pandas
+geopy
 folium
 streamlit-folium
