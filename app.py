@@ -6,6 +6,7 @@ from streamlit_folium import folium_static
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
 from geopy.geocoders import Nominatim
+from geopy.distance import geodesic
 
 # Función para obtener coordenadas de una dirección
 def obtener_coordenadas(direccion):
@@ -15,6 +16,46 @@ def obtener_coordenadas(direccion):
         return (location.latitude, location.longitude)
     else:
         raise ValueError("No se pudo encontrar la dirección")
+
+# Función para calcular la matriz de distancias
+def calcular_matriz_distancias(ubicaciones):
+    matriz = []
+    for i in range(len(ubicaciones)):
+        fila = []
+        for j in range(len(ubicaciones)):
+            if i == j:
+                fila.append(0)  # Distancia de un punto a sí mismo es 0
+            else:
+                distancia = geodesic((ubicaciones[i][1], ubicaciones[i][2]), (ubicaciones[j][1], ubicaciones[j][2])).km
+                fila.append(distancia)
+        matriz.append(fila)
+    return matriz
+
+# Función para optimizar la ruta usando OR-Tools
+def optimizar_ruta(matriz_distancias):
+    manager = pywrapcp.RoutingIndexManager(len(matriz_distancias), 1, 0)
+    routing = pywrapcp.RoutingModel(manager)
+
+    def distance_callback(from_index, to_index):
+        return matriz_distancias[manager.IndexToNode(from_index)][manager.IndexToNode(to_index)]
+
+    transit_callback_index = routing.RegisterTransitCallback(distance_callback)
+    routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
+
+    search_parameters = pywrapcp.DefaultRoutingSearchParameters()
+    search_parameters.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
+
+    solution = routing.SolveWithParameters(search_parameters)
+
+    if solution:
+        index = routing.Start(0)
+        ruta = []
+        while not routing.IsEnd(index):
+            ruta.append(manager.IndexToNode(index))
+            index = solution.Value(routing.NextVar(index))
+        return ruta
+    else:
+        return None
 
 # Conectar a la base de datos
 conn = sqlite3.connect('lavanderia.db')
@@ -130,13 +171,34 @@ elif menu == "Ver Ruta Optimizada":
         # Combinar pedidos, sucursales y recogidas
         ubicaciones = pedidos + sucursales + recogidas
 
-        # Crear un mapa con Folium
-        mapa = folium.Map(location=[-16.3989, -71.5350], zoom_start=14)
-        for ubicacion in ubicaciones:
-            folium.Marker(
-                location=[ubicacion[1], ubicacion[2]],
-                popup=ubicacion[0]
-            ).add_to(mapa)
+        # Calcular la matriz de distancias
+        matriz_distancias = calcular_matriz_distancias(ubicaciones)
 
-        # Mostrar el mapa en Streamlit
-        folium_static(mapa)
+        # Optimizar la ruta
+        ruta_optimizada = optimizar_ruta(matriz_distancias)
+
+        if ruta_optimizada:
+            st.write("Ruta optimizada:", ruta_optimizada)
+
+            # Crear un mapa con Folium
+            mapa = folium.Map(location=[-16.3989, -71.5350], zoom_start=14)
+            for i, idx in enumerate(ruta_optimizada):
+                ubicacion = ubicaciones[idx]
+                folium.Marker(
+                    location=[ubicacion[1], ubicacion[2]],
+                    popup=f"Punto {i+1}: {ubicacion[0]}"
+                ).add_to(mapa)
+
+            # Dibujar la ruta optimizada
+            for i in range(len(ruta_optimizada) - 1):
+                punto_actual = ubicaciones[ruta_optimizada[i]]
+                punto_siguiente = ubicaciones[ruta_optimizada[i + 1]]
+                folium.PolyLine(
+                    locations=[[punto_actual[1], punto_actual[2]], [punto_siguiente[1], punto_siguiente[2]]],
+                    color="blue"
+                ).add_to(mapa)
+
+            # Mostrar el mapa en Streamlit
+            folium_static(mapa)
+        else:
+            st.error("No se pudo optimizar la ruta.")
