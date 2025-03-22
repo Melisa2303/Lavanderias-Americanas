@@ -9,7 +9,7 @@ from geopy.distance import geodesic
 import openrouteservice as ors
 
 # Configura la API key de OpenRouteService
-ors_api_key = "TU_API_KEY_DE_OPENROUTESERVICE"  # Reemplaza con tu API key
+ors_api_key = "5b3ce3597851110001cf62486bc22aa6557847f3a94a99f41f14ec16"  # Reemplaza con tu API key
 
 # Función para obtener coordenadas de una dirección
 def obtener_coordenadas(direccion):
