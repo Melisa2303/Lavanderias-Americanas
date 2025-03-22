@@ -5,6 +5,16 @@ import folium
 from streamlit_folium import folium_static
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
+from geopy.geocoders import Nominatim
+
+# Función para obtener coordenadas de una dirección
+def obtener_coordenadas(direccion):
+    geolocator = Nominatim(user_agent="lavanderia_app")
+    location = geolocator.geocode(direccion)
+    if location:
+        return (location.latitude, location.longitude)
+    else:
+        raise ValueError("No se pudo encontrar la dirección")
 
 # Conectar a la base de datos
 conn = sqlite3.connect('lavanderia.db')
@@ -22,24 +32,32 @@ if menu == "Ingresar Pedido":
     direccion = st.text_input("Dirección")
     fecha_entrega = st.date_input("Fecha de Entrega")
     if st.button("Guardar Pedido"):
-        cursor.execute('''
-            INSERT INTO pedidos (numero_boleta, direccion, fecha_entrega)
-            VALUES (?, ?, ?)
-        ''', (numero_boleta, direccion, fecha_entrega))
-        conn.commit()
-        st.success("Pedido guardado correctamente!")
+        try:
+            latitud, longitud = obtener_coordenadas(direccion)
+            cursor.execute('''
+                INSERT INTO pedidos (numero_boleta, direccion, fecha_entrega, latitud, longitud)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (numero_boleta, direccion, fecha_entrega, latitud, longitud))
+            conn.commit()
+            st.success("Pedido guardado correctamente!")
+        except ValueError as e:
+            st.error(f"Error: {e}")
 
 elif menu == "Ingresar Sucursal":
     st.header("Ingresar Nueva Sucursal")
     nombre = st.text_input("Nombre de la Sucursal")
     direccion = st.text_input("Dirección")
     if st.button("Guardar Sucursal"):
-        cursor.execute('''
-            INSERT INTO sucursales (nombre, direccion)
-            VALUES (?, ?)
-        ''', (nombre, direccion))
-        conn.commit()
-        st.success("Sucursal guardada correctamente!")
+        try:
+            latitud, longitud = obtener_coordenadas(direccion)
+            cursor.execute('''
+                INSERT INTO sucursales (nombre, direccion, latitud, longitud)
+                VALUES (?, ?, ?, ?)
+            ''', (nombre, direccion, latitud, longitud))
+            conn.commit()
+            st.success("Sucursal guardada correctamente!")
+        except ValueError as e:
+            st.error(f"Error: {e}")
 
 elif menu == "Solicitar Recogida":
     st.header("Solicitar Recogida")
