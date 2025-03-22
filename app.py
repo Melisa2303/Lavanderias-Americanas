@@ -20,6 +20,38 @@ def obtener_coordenadas(direccion):
 conn = sqlite3.connect('lavanderia.db')
 cursor = conn.cursor()
 
+# Crear tablas si no existen
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS pedidos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        numero_boleta TEXT,
+        direccion TEXT,
+        fecha_entrega DATE,
+        latitud REAL,
+        longitud REAL
+    )
+''')
+
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS sucursales (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT,
+        direccion TEXT,
+        latitud REAL,
+        longitud REAL
+    )
+''')
+
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS recogidas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        sucursal_id INTEGER,
+        fecha DATE,
+        FOREIGN KEY (sucursal_id) REFERENCES sucursales(id)
+    )
+''')
+conn.commit()
+
 # Título de la aplicación
 st.title("Optimización de Rutas para Lavandería")
 
