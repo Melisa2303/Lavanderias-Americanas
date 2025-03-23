@@ -158,7 +158,7 @@ conn.commit()
 st.title("Optimización de Rutas para Lavandería")
 
 # Menú de opciones
-menu = st.sidebar.selectbox("Menú", ["Ingresar Boleta", "Ingresar Sucursal", "Solicitar Recogida", "Ver Ruta Optimizada"])
+menu = st.sidebar.selectbox("Menú", ["Ingresar Boleta", "Ingresar Sucursal", "Solicitar Recogida", "Datos de Recojos", "Ver Ruta Optimizada"])
 
 if menu == "Ingresar Boleta":
     st.header("Ingresar Boleta")
@@ -305,6 +305,43 @@ elif menu == "Datos Clientes de Delivery":
         st.dataframe(df)
     else:
         st.info("No hay clientes de delivery registrados.")
+
+elif menu == "Datos de Recojos":
+    st.header("Datos de Recojos")
+    
+    # Filtro por fecha
+    fecha_filtro = st.date_input("Filtrar por fecha")
+
+    # Mostrar recojos en sucursal
+    st.subheader("Recojos en Sucursal")
+    cursor.execute('''
+        SELECT s.direccion, r.fecha
+        FROM recogidas r
+        JOIN sucursales s ON r.sucursal_id = s.id
+        WHERE r.fecha = ?
+    ''', (fecha_filtro,))
+    recojos_sucursal = cursor.fetchall()
+
+    if recojos_sucursal:
+        df_sucursal = pd.DataFrame(recojos_sucursal, columns=["Dirección de la Sucursal", "Fecha de Recojo"])
+        st.dataframe(df_sucursal)
+    else:
+        st.info("No hay recojos en sucursal para la fecha seleccionada.")
+
+    # Mostrar recojos de clientes (delivery)
+    st.subheader("Recojos de Clientes (Delivery)")
+    cursor.execute('''
+        SELECT nombre, telefono, direccion, fecha_recogida
+        FROM clientes_delivery
+        WHERE fecha_recogida = ?
+    ''', (fecha_filtro,))
+    recojos_delivery = cursor.fetchall()
+
+    if recojos_delivery:
+        df_delivery = pd.DataFrame(recojos_delivery, columns=["Nombre del Cliente", "Teléfono", "Dirección", "Fecha de Recojo"])
+        st.dataframe(df_delivery)
+    else:
+        st.info("No hay recojos de clientes (delivery) para la fecha seleccionada.")
 
 elif menu == "Ver Ruta Optimizada":
     st.header("Ruta Optimizada")
