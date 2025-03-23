@@ -162,13 +162,14 @@ elif menu == "Ingresar Sucursal":
             st.error(f"Error: {e}")
 
 elif menu == "Solicitar Recogida":
-    st.header("Solicitar recogida de Sucursal")
+    st.header("Solicitar Recogida")
     
     # Opción para seleccionar entre Sucursal o Cliente Delivery
     tipo_recogida = st.radio("Seleccione el tipo de recogida:", ("Sucursal", "Cliente Delivery"))
 
     if tipo_recogida == "Sucursal":
-        # Opción de recogida en sucursal (ya existente)
+        # Opción de recogida en sucursal
+        st.subheader("Registrar Recogida de Sucursal")
         cursor.execute('SELECT id, nombre FROM sucursales')
         sucursales = cursor.fetchall()
         sucursal_id = st.selectbox("Seleccione la sucursal", [s[0] for s in sucursales], format_func=lambda x: [s[1] for s in sucursales if s[0] == x][0])
