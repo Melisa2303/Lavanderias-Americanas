@@ -110,6 +110,18 @@ cursor.execute('''
 ''')
 conn.commit()
 
+# Crear la tabla clientes_delivery si no existe
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS clientes_delivery (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nombre TEXT NOT NULL,
+        telefono TEXT NOT NULL,
+        direccion TEXT NOT NULL,
+        fecha_recogida DATE NOT NULL
+    )
+''')
+conn.commit()
+
 # Título de la aplicación
 st.title("Optimización de Rutas para Lavandería")
 
@@ -151,17 +163,57 @@ elif menu == "Ingresar Sucursal":
 
 elif menu == "Solicitar Recogida":
     st.header("Solicitar Recogida")
-    cursor.execute('SELECT id, nombre FROM sucursales')
-    sucursales = cursor.fetchall()
-    sucursal_id = st.selectbox("Seleccione la sucursal", [s[0] for s in sucursales], format_func=lambda x: [s[1] for s in sucursales if s[0] == x][0])
-    fecha = st.date_input("Fecha de Recogida")
-    if st.button("Solicitar Recogida"):
-        cursor.execute('''
-            INSERT INTO recogidas (sucursal_id, fecha)
-            VALUES (?, ?)
-        ''', (sucursal_id, fecha))
-        conn.commit()
-        st.success("Recogida solicitada correctamente!")
+    
+    # Opción para seleccionar entre Sucursal o Cliente Delivery
+    tipo_recogida = st.radio("Seleccione el tipo de recogida:", ("Sucursal", "Cliente Delivery"))
+
+    if tipo_recogida == "Sucursal":
+        # Opción de recogida en sucursal (ya existente)
+        cursor.execute('SELECT id, nombre FROM sucursales')
+        sucursales = cursor.fetchall()
+        sucursal_id = st.selectbox("Seleccione la sucursal", [s[0] for s in sucursales], format_func=lambda x: [s[1] for s in sucursales if s[0] == x][0])
+        fecha = st.date_input("Fecha de Recogida")
+        if st.button("Solicitar Recogida"):
+            cursor.execute('''
+                INSERT INTO recogidas (sucursal_id, fecha)
+                VALUES (?, ?)
+            ''', (sucursal_id, fecha))
+            conn.commit()
+            st.success("Recogida en sucursal solicitada correctamente!")
+
+    elif tipo_recogida == "Cliente Delivery":
+        # Opción de recogida a domicilio (nueva)
+        st.subheader("Registrar Cliente para Recogida a Domicilio")
+        nombre_cliente = st.text_input("Nombre del Cliente")
+        telefono_cliente = st.text_input("Teléfono del Cliente")
+        direccion_cliente = st.text_input("Dirección del Cliente")
+        fecha_recogida = st.date_input("Fecha de Recogida")
+        
+        if st.button("Registrar Cliente para Recogida"):
+            if nombre_cliente and telefono_cliente and direccion_cliente:
+                cursor.execute('''
+                    INSERT INTO clientes_delivery (nombre, telefono, direccion, fecha_recogida)
+                    VALUES (?, ?, ?, ?)
+                ''', (nombre_cliente, telefono_cliente, direccion_cliente, fecha_recogida))
+                conn.commit()
+                st.success("Cliente registrado para recogida a domicilio correctamente!")
+            else:
+                st.error("Por favor, complete todos los campos.")
+
+elif menu == "Datos Clientes de Delivery":
+    st.header("Datos Clientes de Delivery")
+    
+    # Obtener todos los clientes de delivery de la base de datos
+    cursor.execute('SELECT * FROM clientes_delivery')
+    clientes_delivery = cursor.fetchall()
+    
+    if clientes_delivery:
+        # Mostrar los datos en una tabla
+        st.subheader("Lista de Clientes de Delivery")
+        df = pd.DataFrame(clientes_delivery, columns=["ID", "Nombre", "Teléfono", "Dirección", "Fecha de Recogida"])
+        st.dataframe(df)
+    else:
+        st.info("No hay clientes de delivery registrados.")
 
 elif menu == "Ver Ruta Optimizada":
     st.header("Ruta Optimizada")
@@ -182,11 +234,25 @@ elif menu == "Ver Ruta Optimizada":
         ''', (fecha,))
         recogidas = cursor.fetchall()
 
-        cursor.execute('SELECT direccion, latitud, longitud FROM sucursales')
-        sucursales = cursor.fetchall()
+        # Obtener clientes de delivery para la fecha seleccionada
+        cursor.execute('''
+            SELECT direccion FROM clientes_delivery
+            WHERE fecha_recogida = ?
+        ''', (fecha,))
+        clientes_delivery = cursor.fetchall()
 
-        # Combinar pedidos, sucursales y recogidas
-        ubicaciones = pedidos + sucursales + recogidas
+        # Convertir direcciones de clientes de delivery a coordenadas
+        ubicaciones_delivery = []
+        for cliente in clientes_delivery:
+            direccion = cliente[0]
+            try:
+                latitud, longitud = obtener_coordenadas(direccion)
+                ubicaciones_delivery.append((direccion, latitud, longitud))
+            except ValueError as e:
+                st.error(f"Error al geocodificar la dirección {direccion}: {e}")
+
+        # Combinar pedidos, sucursales, recogidas y clientes de delivery
+        ubicaciones = pedidos + recogidas + ubicaciones_delivery
 
         # Calcular la matriz de distancias
         matriz_distancias = calcular_matriz_distancias(ubicaciones)
