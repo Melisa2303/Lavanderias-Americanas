@@ -137,28 +137,80 @@ cursor.execute('''
 ''')
 conn.commit()
 
+# Crear la tabla boletas si no existe
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS boletas (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        numero_boleta TEXT NOT NULL,
+        nombre_cliente TEXT NOT NULL,
+        dni_cliente TEXT NOT NULL,
+        monto_pagar REAL NOT NULL,
+        medio_pago TEXT NOT NULL,
+        tipo_entrega TEXT NOT NULL,
+        sucursal_id INTEGER,
+        direccion TEXT,
+        articulos_lavados TEXT
+    )
+''')
+conn.commit()
+
 # Título de la aplicación
 st.title("Optimización de Rutas para Lavandería")
 
 # Menú de opciones
 menu = st.sidebar.selectbox("Menú", ["Ingresar Pedido", "Ingresar Sucursal", "Solicitar Recogida", "Ver Ruta Optimizada"])
 
-if menu == "Ingresar Pedido":
-    st.header("Ingresar Nuevo Pedido")
+if menu == "Ingresar Boleta":
+    st.header("Ingresar Boleta")
+    
+    # Campos para ingresar los datos de la boleta
     numero_boleta = st.text_input("Número de Boleta")
-    direccion = st.text_input("Dirección")
-    fecha_entrega = st.date_input("Fecha de Entrega")
-    if st.button("Guardar Pedido"):
-        try:
-            latitud, longitud = obtener_coordenadas(direccion)
+    nombre_cliente = st.text_input("Nombre del Cliente")
+    dni_cliente = st.text_input("DNI del Cliente")
+    monto_pagar = st.number_input("Monto a Pagar", min_value=0.0, format="%.2f")
+    medio_pago = st.selectbox("Medio de Pago", ["Efectivo", "Tarjeta de Crédito", "Tarjeta de Débito", "Transferencia"])
+    
+    # Opciones de entrega: Sucursal o Delivery
+    tipo_entrega = st.radio("Tipo de Entrega", ("Sucursal", "Delivery"))
+
+    if tipo_entrega == "Sucursal":
+        # Si es entrega en sucursal, mostrar un desplegable para elegir la sucursal
+        cursor.execute('SELECT id, nombre FROM sucursales')
+        sucursales = cursor.fetchall()
+        sucursal_id = st.selectbox("Seleccione la sucursal", [s[0] for s in sucursales], format_func=lambda x: [s[1] for s in sucursales if s[0] == x][0])
+        direccion = None  # No se necesita dirección para entrega en sucursal
+    elif tipo_entrega == "Delivery":
+        # Si es delivery, pedir la dirección del cliente
+        direccion = st.text_input("Dirección del Cliente")
+        sucursal_id = None  # No se necesita sucursal para delivery
+
+    # Campo para seleccionar los artículos lavados
+    st.subheader("Artículos Lavados")
+    tipos_articulos = ["Ropa de cama", "Prendas de vestir", "Otros artículos"]
+    articulos_lavados = []
+
+    for tipo in tipos_articulos:
+        with st.expander(f"{tipo}"):
+            descripcion = st.text_input(f"Descripción de {tipo}", key=f"{tipo}_descripcion")
+            if descripcion:
+                articulos_lavados.append(f"{tipo}: {descripcion}")
+
+    # Convertir la lista de artículos lavados a una cadena de texto
+    articulos_lavados_str = "; ".join(articulos_lavados)
+
+    # Botón para guardar la boleta
+    if st.button("Guardar Boleta"):
+        if numero_boleta and nombre_cliente and dni_cliente and monto_pagar and medio_pago:
+            # Insertar los datos en la tabla boletas
             cursor.execute('''
-                INSERT INTO pedidos (numero_boleta, direccion, fecha_entrega, latitud, longitud)
-                VALUES (?, ?, ?, ?, ?)
-            ''', (numero_boleta, direccion, fecha_entrega, latitud, longitud))
+                INSERT INTO boletas (
+                    numero_boleta, nombre_cliente, dni_cliente, monto_pagar, medio_pago, tipo_entrega, sucursal_id, direccion, articulos_lavados
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (numero_boleta, nombre_cliente, dni_cliente, monto_pagar, medio_pago, tipo_entrega, sucursal_id, direccion, articulos_lavados_str))
             conn.commit()
-            st.success("Pedido guardado correctamente!")
-        except ValueError as e:
-            st.error(f"Error: {e}")
+            st.success("Boleta guardada correctamente!")
+        else:
+            st.error("Por favor, complete todos los campos.")
 
 elif menu == "Ingresar Sucursal":
     st.header("Ingresar Nueva Sucursal")
@@ -295,7 +347,7 @@ elif menu == "Ver Ruta Optimizada":
         entregas = cursor.fetchall()
 
         # Combinar pedidos, sucursales, recogidas y entregas
-        ubicaciones = pedidos + recogidas + entregas
+        ubicaciones = recogidas + entregas
 
         # Calcular la matriz de distancias
         matriz_distancias = calcular_matriz_distancias(ubicaciones)
