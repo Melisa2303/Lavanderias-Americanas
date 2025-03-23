@@ -158,7 +158,7 @@ conn.commit()
 st.title("Optimización de Rutas para Lavandería")
 
 # Menú de opciones
-menu = st.sidebar.selectbox("Menú", ["Ingresar Boleta", "Ingresar Sucursal", "Solicitar Recogida", "Datos de Recojos", "Ver Ruta Optimizada"])
+menu = st.sidebar.selectbox("Menú", ["Ingresar Boleta", "Ingresar Sucursal", "Solicitar Recogida", "Datos de Recojos", "Datos de Boletas Registradas", "Ver Ruta Optimizada"])
 
 if menu == "Ingresar Boleta":
     st.header("Ingresar Boleta")
@@ -342,6 +342,71 @@ elif menu == "Datos de Recojos":
         st.dataframe(df_delivery)
     else:
         st.info("No hay recojos de clientes (delivery) para la fecha seleccionada.")
+
+elif menu == "Datos de Boletas Registradas":
+    st.header("Datos de Boletas Registradas")
+    
+    # Filtro por rango de fechas
+    st.subheader("Filtrar por Rango de Fechas")
+    fecha_inicio = st.date_input("Fecha de inicio")
+    fecha_fin = st.date_input("Fecha de fin")
+
+    # Filtro por tipo de entrega (sucursal o delivery)
+    st.subheader("Filtrar por Tipo de Entrega")
+    tipo_entrega_filtro = st.radio("Tipo de entrega", ("Todas", "Sucursal", "Delivery"))
+
+    # Si el tipo de entrega es sucursal, mostrar un desplegable para elegir la sucursal
+    sucursal_filtro = None
+    if tipo_entrega_filtro == "Sucursal":
+        cursor.execute('SELECT id, nombre FROM sucursales')
+        sucursales = cursor.fetchall()
+        sucursal_filtro = st.selectbox("Seleccione la sucursal", [s[0] for s in sucursales], format_func=lambda x: [s[1] for s in sucursales if s[0] == x][0])
+
+    # Construir la consulta SQL según los filtros seleccionados
+    query = '''
+        SELECT 
+            b.numero_boleta, 
+            b.nombre_cliente, 
+            b.dni_cliente, 
+            b.monto_pagar, 
+            b.medio_pago, 
+            b.tipo_entrega, 
+            s.nombre AS sucursal, 
+            b.direccion,
+            b.articulos_lavados
+        FROM boletas b
+        LEFT JOIN sucursales s ON b.sucursal_id = s.id
+        WHERE 1=1
+    '''
+    params = []
+
+    # Aplicar filtro por rango de fechas
+    if fecha_inicio and fecha_fin:
+        query += " AND b.fecha_creacion BETWEEN ? AND ?"
+        params.extend([fecha_inicio, fecha_fin])
+
+    # Aplicar filtro por tipo de entrega
+    if tipo_entrega_filtro == "Sucursal":
+        query += " AND b.tipo_entrega = ? AND b.sucursal_id = ?"
+        params.extend(["sucursal", sucursal_filtro])
+    elif tipo_entrega_filtro == "Delivery":
+        query += " AND b.tipo_entrega = ?"
+        params.append("delivery")
+
+    # Ejecutar la consulta
+    cursor.execute(query, params)
+    boletas_filtradas = cursor.fetchall()
+
+    # Mostrar los resultados en una tabla
+    if boletas_filtradas:
+        st.subheader("Boletas Registradas")
+        df = pd.DataFrame(boletas_filtradas, columns=[
+            "Número de Boleta", "Nombre del Cliente", "DNI", "Monto a Pagar", 
+            "Medio de Pago", "Tipo de Entrega", "Sucursal", "Dirección", "Artículos Lavados"
+        ])
+        st.dataframe(df)
+    else:
+        st.info("No hay boletas registradas que coincidan con los filtros seleccionados.")
 
 elif menu == "Ver Ruta Optimizada":
     st.header("Ruta Optimizada")
