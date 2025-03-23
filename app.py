@@ -199,7 +199,7 @@ elif menu == "Solicitar Recogida":
             conn.commit()
 
             # Programar la entrega dos días después
-            fecha_entrega = fecha_recogida + timedelta(days=2)
+            fecha_entrega = fecha_recogida + timedelta(days=3)
             cursor.execute('''
                 INSERT INTO entregas (tipo, sucursal_id, fecha_entrega)
                 VALUES (?, ?, ?)
@@ -227,7 +227,7 @@ elif menu == "Solicitar Recogida":
                 conn.commit()
 
                 # Programar la entrega dos días después
-                fecha_entrega = fecha_recogida + timedelta(days=2)
+                fecha_entrega = fecha_recogida + timedelta(days=3)
                 cursor.execute('''
                     INSERT INTO entregas (tipo, cliente_id, fecha_entrega)
                     VALUES (?, ?, ?)
