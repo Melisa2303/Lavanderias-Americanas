@@ -160,7 +160,7 @@ st.title("Optimización de Rutas para Lavandería")
 # Menú de opciones
 menu = st.sidebar.selectbox("Menú", ["Ingresar Boleta", "Ingresar Sucursal", "Solicitar Recogida", "Ver Ruta Optimizada"])
 
-if menu == "Ingresar Boleta":
+elif menu == "Ingresar Boleta":
     st.header("Ingresar Boleta")
     
     # Campos para ingresar los datos de la boleta
@@ -168,7 +168,7 @@ if menu == "Ingresar Boleta":
     nombre_cliente = st.text_input("Nombre del Cliente")
     dni_cliente = st.text_input("DNI del Cliente")
     monto_pagar = st.number_input("Monto a Pagar", min_value=0.0, format="%.2f")
-    medio_pago = st.selectbox("Medio de Pago", ["Efectivo", "Tarjeta de Crédito", "Tarjeta de Débito", "Transferencia"])
+    medio_pago = st.selectbox("Medio de Pago", ["Efectivo", "Yape", "Plin", "Transferencia"])
     
     # Opciones de entrega: Sucursal o Delivery
     tipo_entrega = st.radio("Tipo de Entrega", ("Sucursal", "Delivery"))
@@ -180,23 +180,17 @@ if menu == "Ingresar Boleta":
         sucursal_id = st.selectbox("Seleccione la sucursal", [s[0] for s in sucursales], format_func=lambda x: [s[1] for s in sucursales if s[0] == x][0])
         direccion = None  # No se necesita dirección para entrega en sucursal
     elif tipo_entrega == "Delivery":
-        # Si es delivery, pedir la dirección del cliente
-        direccion = st.text_input("Dirección del Cliente")
+        # Si es delivery, no se pide la dirección
         sucursal_id = None  # No se necesita sucursal para delivery
+        direccion = None  # No se necesita dirección
 
     # Campo para seleccionar los artículos lavados
     st.subheader("Artículos Lavados")
     tipos_articulos = ["Ropa de cama", "Prendas de vestir", "Otros artículos"]
-    articulos_lavados = []
+    articulos_seleccionados = st.multiselect("Seleccione los artículos lavados", tipos_articulos)
 
-    for tipo in tipos_articulos:
-        with st.expander(f"{tipo}"):
-            descripcion = st.text_input(f"Descripción de {tipo}", key=f"{tipo}_descripcion")
-            if descripcion:
-                articulos_lavados.append(f"{tipo}: {descripcion}")
-
-    # Convertir la lista de artículos lavados a una cadena de texto
-    articulos_lavados_str = "; ".join(articulos_lavados)
+    # Convertir la lista de artículos seleccionados a una cadena de texto separada por comas
+    articulos_lavados_str = ", ".join(articulos_seleccionados)
 
     # Botón para guardar la boleta
     if st.button("Guardar Boleta"):
@@ -211,7 +205,7 @@ if menu == "Ingresar Boleta":
             st.success("Boleta guardada correctamente!")
         else:
             st.error("Por favor, complete todos los campos.")
-
+            
 elif menu == "Ingresar Sucursal":
     st.header("Ingresar Nueva Sucursal")
     nombre = st.text_input("Nombre de la Sucursal")
