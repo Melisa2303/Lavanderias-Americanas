@@ -167,8 +167,15 @@ if menu == "Ingresar Boleta":
     numero_boleta = st.text_input("Número de Boleta")
     nombre_cliente = st.text_input("Nombre del Cliente")
     dni_cliente = st.text_input("DNI del Cliente")
-    monto_pagar = st.number_input("Monto a Pagar", min_value=0.0, format="%.2f")
-    medio_pago = st.selectbox("Medio de Pago", ["Efectivo", "Yape", "Plin", "Transferencia"])
+
+    # Crear dos columnas para Monto a Pagar y Medio de Pago
+    col1, col2 = st.columns(2)  # Dos columnas de igual ancho
+
+    with col1:
+        monto_pagar = st.number_input("Monto a Pagar", min_value=0.0, format="%.2f")
+
+    with col2:
+        medio_pago = st.selectbox("Medio de Pago", ["Efectivo", "Yape", "Plin", "Transferencia"])
     
     # Opciones de entrega: Sucursal o Delivery
     tipo_entrega = st.radio("Tipo de Entrega", ("Sucursal", "Delivery"))
