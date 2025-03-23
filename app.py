@@ -162,7 +162,7 @@ elif menu == "Ingresar Sucursal":
             st.error(f"Error: {e}")
 
 elif menu == "Solicitar Recogida":
-    st.header("Solicitar Recogida")
+    st.header("Solicitar recogida de Sucursal")
     
     # Opción para seleccionar entre Sucursal o Cliente Delivery
     tipo_recogida = st.radio("Seleccione el tipo de recogida:", ("Sucursal", "Cliente Delivery"))
