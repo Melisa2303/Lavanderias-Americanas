@@ -158,7 +158,7 @@ conn.commit()
 st.title("Optimización de Rutas para Lavandería")
 
 # Menú de opciones
-menu = st.sidebar.selectbox("Menú", ["Ingresar Pedido", "Ingresar Sucursal", "Solicitar Recogida", "Ver Ruta Optimizada"])
+menu = st.sidebar.selectbox("Menú", ["Ingresar Boleta", "Ingresar Sucursal", "Solicitar Recogida", "Ver Ruta Optimizada"])
 
 if menu == "Ingresar Boleta":
     st.header("Ingresar Boleta")
