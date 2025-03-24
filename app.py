@@ -1,6 +1,7 @@
 import streamlit as st
 import sqlite3
 import folium
+import pandas as pd
 from streamlit_folium import folium_static
 from ortools.constraint_solver import routing_enums_pb2
 from ortools.constraint_solver import pywrapcp
@@ -11,6 +12,17 @@ import openrouteservice as ors
 
 # Configura la API key de OpenRouteService
 ors_api_key = "5b3ce3597851110001cf62486bc22aa6557847f3a94a99f41f14ec16"  # Reemplaza con tu API key
+
+# Mostrar el logo y el nombre de la lavandería
+col1, col2 = st.columns([1, 4])  # Divide la cabecera en dos columnas
+
+with col1:
+    # Mostrar el logo (asegúrate de que el archivo "logo.png" esté en la misma carpeta)
+    st.image("LOGO.png", width=100)  # Ajusta el ancho según sea necesario
+
+with col2:
+    # Mostrar el nombre de la lavandería
+    st.title("Lavanderías Americanas") 
 
 # Función para obtener coordenadas de una dirección
 def obtener_coordenadas(direccion):
