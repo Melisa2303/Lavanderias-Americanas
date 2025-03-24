@@ -14,6 +14,7 @@ import openrouteservice as ors
 import io
 import os
 from dotenv import load_dotenv
+from config import get_db_config
 
 # Cargar variables de entorno
 load_dotenv()
@@ -22,25 +23,25 @@ load_dotenv()
 ors_api_key = "5b3ce3597851110001cf62486bc22aa6557847f3a94a99f41f14ec16"  # Reemplaza con tu API key
 
 # Función para conectar a Supabase
-def conectar_supabase():
+def conectar():
     try:
+        conf = get_db_config()
         conn = psycopg2.connect(
-            host=os.getenv("DB_HOST"),
-            dbname=os.getenv("DB_NAME"),
-            user=os.getenv("DB_USER"),
-            password=os.getenv("DB_PASSWORD"),
-            port=os.getenv("DB_PORT"),
-            sslmode="require",
-            connect_timeout=3
+            host=conf['host'],
+            dbname=conf['database'],
+            user=conf['user'],
+            password=conf['password'],
+            port=conf['port'],
+            sslmode=conf['sslmode']
         )
         print("✅ ¡Conexión exitosa!")
         return conn
     except Exception as e:
-        print(f"❌ Error: {str(e).split('.')[0]}")
-        print("Verifica:")
-        print("1. Archivo .env en la misma carpeta")
-        print("2. Credenciales correctas")
-        print("3. IP permitida en Supabase")
+        print(f"❌ Error: {type(e).__name__}")
+        print("Posibles soluciones:")
+        print("1. Verifica que el host comience con db.[id].supabase.co")
+        print("2. Asegúrate que tu IP esté en Allowed IPs (0.0.0.0/0 temporalmente)")
+        print("3. Revisa la contraseña en Project Settings > Database")
         return None
 
 # Función para obtener coordenadas de una dirección
