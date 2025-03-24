@@ -4,7 +4,7 @@ import os
 def get_db_config():
     # Intenta obtener de variables de entorno (para producción)
     config = {
-        'host': os.getenv('DB_HOST', 'db.tu_id.supabase.co'),  # Reemplaza con TU host real
+        'host': os.getenv('DB_HOST', 'db.iplccwzxyprinddvskyz.supabase.co'),  # Reemplaza con TU host real
         'database': 'postgres',
         'user': 'postgres',
         'password': os.getenv('DB_PASSWORD', ''),  # Se obtendrá del entorno
