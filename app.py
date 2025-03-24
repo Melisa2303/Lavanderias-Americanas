@@ -23,25 +23,42 @@ load_dotenv()
 ors_api_key = "5b3ce3597851110001cf62486bc22aa6557847f3a94a99f41f14ec16"  # Reemplaza con tu API key
 
 # Función para conectar a Supabase
-def conectar():
+import psycopg2
+from dotenv import load_dotenv
+import os
+import streamlit as st
+
+# Cargar variables de entorno
+load_dotenv()
+
+def conectar_db():
+    """Función de conexión mejorada con manejo de errores"""
     try:
-        conf = get_db_config()
         conn = psycopg2.connect(
-            host=conf['host'],
-            dbname=conf['database'],
-            user=conf['user'],
-            password=conf['password'],
-            port=conf['port'],
-            sslmode=conf['sslmode']
+            host=os.getenv("DB_HOST", "db.tu_id.supabase.co"),  # Valor por defecto como backup
+            dbname=os.getenv("DB_NAME", "postgres"),
+            user=os.getenv("DB_USER", "postgres"),
+            password=os.getenv("DB_PASSWORD"),  # Este DEBE estar en .env
+            port=os.getenv("DB_PORT", "5432"),
+            sslmode="require",
+            connect_timeout=5
         )
-        print("✅ ¡Conexión exitosa!")
+        
+        # Test de conexión
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1")
+            if cur.fetchone()[0] != 1:
+                raise ValueError("Test de conexión fallido")
+                
         return conn
+        
     except Exception as e:
-        print(f"❌ Error: {type(e).__name__}")
-        print("Posibles soluciones:")
-        print("1. Verifica que el host comience con db.[id].supabase.co")
-        print("2. Asegúrate que tu IP esté en Allowed IPs (0.0.0.0/0 temporalmente)")
-        print("3. Revisa la contraseña en Project Settings > Database")
+        st.error("🔴 Error crítico de conexión")
+        st.error(f"Detalle: {str(e).split('.')[0]}")
+        st.info("ℹ️ Verifica que:")
+        st.info("1. El archivo .env existe con las credenciales correctas")
+        st.info("2. Tu IP está permitida en Supabase (Settings > Database)")
+        st.info("3. El servicio de Supabase está activo")
         return None
 
 # Función para obtener coordenadas de una dirección
@@ -193,22 +210,22 @@ def inicializar_tablas():
 
 # Función para verificar el inicio de sesión
 def verificar_login(usuario, contraseña):
-    conn = conectar_db()
-    if conn:
-        try:
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT perfil FROM usuarios
+    conn = conectar_db()  # ← Asegúrate que esta función existe
+    if not conn:
+        return None
+        
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("""
+                SELECT perfil FROM usuarios 
                 WHERE usuario = %s AND contraseña = %s
-            ''', (usuario, contraseña))
-            resultado = cursor.fetchone()
-            return resultado[0] if resultado else None
-        except Exception as e:
-            st.error(f"Error al verificar login: {e}")
-            return None
-        finally:
-            cursor.close()
-            conn.close()
+                """, (usuario, contraseña))
+            return cursor.fetchone()[0] if cursor.rowcount > 0 else None
+    except Exception as e:
+        st.error(f"Error de verificación: {str(e)}")
+        return None
+    finally:
+        conn.close()
 
 # Pantalla de inicio de sesión
 def mostrar_login():
