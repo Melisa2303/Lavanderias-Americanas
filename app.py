@@ -149,7 +149,8 @@ cursor.execute('''
         tipo_entrega TEXT NOT NULL,
         sucursal_id INTEGER,
         direccion TEXT,
-        articulos_lavados TEXT
+        articulos_lavados TEXT,
+        fecha_registro DATE  -- Nueva columna para la fecha de registro
     )
 ''')
 conn.commit()
@@ -177,6 +178,9 @@ if menu == "Ingresar Boleta":
     with col2:
         medio_pago = st.selectbox("Medio de Pago", ["Efectivo", "Yape", "Plin", "Transferencia"])
     
+    # Campo para seleccionar la fecha de registro
+    fecha_registro = st.date_input("Fecha de Registro")
+
     # Opciones de entrega: Sucursal o Delivery
     tipo_entrega = st.radio("Tipo de Entrega", ("Sucursal", "Delivery"))
 
@@ -205,9 +209,9 @@ if menu == "Ingresar Boleta":
             # Insertar los datos en la tabla boletas
             cursor.execute('''
                 INSERT INTO boletas (
-                    numero_boleta, nombre_cliente, dni_cliente, monto_pagar, medio_pago, tipo_entrega, sucursal_id, direccion, articulos_lavados
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (numero_boleta, nombre_cliente, dni_cliente, monto_pagar, medio_pago, tipo_entrega, sucursal_id, direccion, articulos_lavados_str))
+                    numero_boleta, nombre_cliente, dni_cliente, monto_pagar, medio_pago, tipo_entrega, sucursal_id, direccion, articulos_lavados, fecha_registro
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (numero_boleta, nombre_cliente, dni_cliente, monto_pagar, medio_pago, tipo_entrega, sucursal_id, direccion, articulos_lavados_str, fecha_registro))
             conn.commit()
             st.success("Boleta guardada correctamente!")
         else:
@@ -373,7 +377,8 @@ elif menu == "Datos de Boletas Registradas":
             b.tipo_entrega, 
             s.nombre AS sucursal, 
             b.direccion,
-            b.articulos_lavados
+            b.articulos_lavados,
+            b.fecha_registro
         FROM boletas b
         LEFT JOIN sucursales s ON b.sucursal_id = s.id
         WHERE 1=1
@@ -382,7 +387,7 @@ elif menu == "Datos de Boletas Registradas":
 
     # Aplicar filtro por rango de fechas
     if fecha_inicio and fecha_fin:
-        query += " AND b.fecha_creacion BETWEEN ? AND ?"
+        query += " AND b.fecha_registro BETWEEN ? AND ?"
         params.extend([fecha_inicio, fecha_fin])
 
     # Aplicar filtro por tipo de entrega
@@ -402,12 +407,12 @@ elif menu == "Datos de Boletas Registradas":
         st.subheader("Boletas Registradas")
         df = pd.DataFrame(boletas_filtradas, columns=[
             "Número de Boleta", "Nombre del Cliente", "DNI", "Monto a Pagar", 
-            "Medio de Pago", "Tipo de Entrega", "Sucursal", "Dirección", "Artículos Lavados"
+            "Medio de Pago", "Tipo de Entrega", "Sucursal", "Dirección", "Artículos Lavados", "Fecha de Registro"
         ])
         st.dataframe(df)
     else:
         st.info("No hay boletas registradas que coincidan con los filtros seleccionados.")
-
+        
 elif menu == "Ver Ruta Optimizada":
     st.header("Ruta Optimizada")
     fecha = st.date_input("Seleccione la fecha para ver la ruta")
