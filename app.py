@@ -22,17 +22,7 @@ load_dotenv()
 # Configura la API key de OpenRouteService
 ors_api_key = "5b3ce3597851110001cf62486bc22aa6557847f3a94a99f41f14ec16"  # Reemplaza con tu API key
 
-# Función para conectar a Supabase
-import psycopg2
-from dotenv import load_dotenv
-import os
-import streamlit as st
-
-# Cargar variables de entorno
-load_dotenv()
-
 # app.py - Conexión directa (SOLO PARA PRUEBAS)
-import psycopg2
 
 def conectar_db():
     try:
@@ -40,7 +30,7 @@ def conectar_db():
             host="db.TU_ID_SUPABASE.supabase.co",  # Reemplaza con tu host real
             dbname="postgres",
             user="postgres",
-            password="TU_CONTRASEÑA",  # Contraseña directa aquí
+            password="lavamer123",  # Contraseña directa aquí
             port="5432",
             sslmode="require"
         )
@@ -111,6 +101,7 @@ def obtener_ruta_real(coordenadas, api_key):
         st.error(f"Error al calcular la ruta: {e}")
         return None
 
+#Creacion de tablas
 def inicializar_tablas():
     conn = conectar_db()
     if conn:
@@ -193,10 +184,9 @@ def inicializar_tablas():
             conn.close()
 
 # Ejecutar solo una vez (luego comentar)
-# inicializar_tablas()
+inicializar_tablas()
 
 # Función para verificar el inicio de sesión
-# Reemplaza tu función de verificar_login con:
 def verificar_login(usuario, contraseña):
     # Usuarios de prueba directos en el código
     usuarios = {
