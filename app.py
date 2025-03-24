@@ -18,7 +18,7 @@ col1, col2 = st.columns([1, 4])  # Divide la cabecera en dos columnas
 
 with col1:
     # Mostrar el logo (asegúrate de que el archivo "logo.png" esté en la misma carpeta)
-    st.image("LOGO.png", width=100)  # Ajusta el ancho según sea necesario
+    st.image("https://github.com/Melisa2303/Lavanderias-Americanas/blob/main/LOGO.PNG?raw=true", width=100)  # Ajusta el ancho según sea necesario
 
 with col2:
     # Mostrar el nombre de la lavandería
