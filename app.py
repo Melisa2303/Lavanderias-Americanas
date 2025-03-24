@@ -29,11 +29,13 @@ def conectar_db():
             database=os.getenv("DB_NAME"),
             user=os.getenv("DB_USER"),
             password=os.getenv("DB_PASSWORD"),
-            port=os.getenv("DB_PORT")
+            port=os.getenv("DB_PORT"),
+            sslmode="require"  # ¡Importante para Supabase!
         )
         return conn
     except Exception as e:
-        st.error(f"Error al conectar a la base de datos: {e}")
+        st.error(f"Error de conexión: Verifica tus credenciales en Supabase")
+        st.error(f"Detalle técnico: {str(e).split('.')[0]}")  # Muestra solo la primera parte del error
         return None
 
 # Función para obtener coordenadas de una dirección
