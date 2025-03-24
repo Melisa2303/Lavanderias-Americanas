@@ -10,6 +10,7 @@ from geopy.distance import geodesic
 from datetime import timedelta
 import datetime
 import openrouteservice as ors
+import io
 
 # Configura la API key de OpenRouteService
 ors_api_key = "5b3ce3597851110001cf62486bc22aa6557847f3a94a99f41f14ec16"  # Reemplaza con tu API key
@@ -230,454 +231,448 @@ else:
         # Mostrar el nombre de la lavandería
         st.title("Lavanderías Americanas")
 
-    # Título de la aplicación
-    st.title("Optimización de Rutas para Lavandería")
-
-# Menú de opciones
-# menu = st.sidebar.selectbox("Menú", ["Ingresar Boleta", "Ingresar Sucursal", "Solicitar Recogida", "Datos de Recojos", "Datos de Boletas Registradas", "Ver Ruta Optimizada"])
-
     # Mostrar el menú según el perfil
     menu = mostrar_menu()
 
     # Aquí va el código de las pestañas (Ingresar Boleta, Ingresar Sucursal, etc.)
     if menu == "Ingresar Boleta":
-       st.header("Ingresar Boleta")
-    
-    # Campos para ingresar los datos de la boleta
-    numero_boleta = st.text_input("Número de Boleta")
-    nombre_cliente = st.text_input("Nombre del Cliente")
-    dni_cliente = st.text_input("DNI del Cliente")
-
-    # Crear dos columnas para Monto a Pagar y Medio de Pago
-    col1, col2 = st.columns(2)  # Dos columnas de igual ancho
-
-    with col1:
-        monto_pagar = st.number_input("Monto a Pagar", min_value=0.0, format="%.2f")
-
-    with col2:
-        medio_pago = st.selectbox("Medio de Pago", ["Efectivo", "Yape", "Plin", "Transferencia"])
-    
-    # Campo para seleccionar la fecha de registro
-    fecha_registro = st.date_input("Fecha de Registro")
-
-    # Opciones de entrega: Sucursal o Delivery
-    tipo_entrega = st.radio("Tipo de Entrega", ("Sucursal", "Delivery"))
-
-    if tipo_entrega == "Sucursal":
-        # Si es entrega en sucursal, mostrar un desplegable para elegir la sucursal
-        cursor.execute('SELECT id, nombre FROM sucursales')
-        sucursales = cursor.fetchall()
-        if sucursales:
-            sucursal_id = st.selectbox("Seleccione la sucursal", [s[0] for s in sucursales], format_func=lambda x: [s[1] for s in sucursales if s[0] == x][0])
-            direccion = None  # No se necesita dirección para entrega en sucursal
-        else:
-            st.warning("No hay sucursales registradas.")
-            sucursal_id = None
-    elif tipo_entrega == "Delivery":
-        # Si es delivery, no se pide la dirección
-        sucursal_id = None  # No se necesita sucursal para delivery
-        direccion = None  # No se necesita dirección
-
-    # Botón para guardar la boleta
-    if st.button("Guardar Boleta"):
-        # Validaciones
-        errores = []
-
-        # Validar DNI
-        if not dni_cliente or len(dni_cliente.strip()) == 0:
-            errores.append("El DNI del cliente es obligatorio.")
-        elif not dni_cliente.isdigit() or len(dni_cliente) != 8:
-            errores.append("El DNI debe tener exactamente 8 dígitos y solo números.")
-
-        # Validar Número de Boleta
-        if not numero_boleta or len(numero_boleta.strip()) == 0:
-            errores.append("El número de boleta es obligatorio.")
-        elif not numero_boleta.isdigit():
-            errores.append("El número de boleta solo puede contener números.")
-        else:
-            # Verificar si el número de boleta ya existe en la misma sucursal o en delivery
-            if tipo_entrega == "Sucursal":
-                cursor.execute('''
-                    SELECT COUNT(*) FROM boletas
-                    WHERE numero_boleta = ? AND sucursal_id = ?
-                ''', (numero_boleta, sucursal_id))
-            elif tipo_entrega == "Delivery":
-                cursor.execute('''
-                    SELECT COUNT(*) FROM boletas
-                    WHERE numero_boleta = ? AND tipo_entrega = 'Delivery'
-                ''', (numero_boleta,))
-            
-            count = cursor.fetchone()[0]
-            if count > 0:
-                errores.append("El número de boleta ya existe para esta sucursal o delivery.")
-
-        # Validar campos obligatorios
-        if not nombre_cliente or len(nombre_cliente.strip()) == 0:
-            errores.append("El nombre del cliente es obligatorio.")
-        if not monto_pagar or monto_pagar <= 0:
-            errores.append("El monto a pagar debe ser mayor que 0.")
-        if not fecha_registro:
-            errores.append("La fecha de registro es obligatoria.")
-
-        # Mostrar errores o guardar los datos
-        if errores:
-            for error in errores:
-                st.error(error)
-        else:
-            # Insertar los datos en la tabla boletas
-            cursor.execute('''
-                INSERT INTO boletas (
-                    numero_boleta, nombre_cliente, dni_cliente, monto_pagar, medio_pago, tipo_entrega, sucursal_id, direccion, fecha_registro
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (numero_boleta, nombre_cliente, dni_cliente, monto_pagar, medio_pago, tipo_entrega, sucursal_id, direccion, fecha_registro))
-            conn.commit()
-            st.success("Boleta guardada correctamente!")
-
-elif menu == "Ingresar Sucursal":
-    st.header("Ingresar Nueva Sucursal")
-    nombre = st.text_input("Nombre de la Sucursal")
-    direccion = st.text_input("Dirección")
-    if st.button("Guardar Sucursal"):
-        try:
-            latitud, longitud = obtener_coordenadas(direccion)
-            cursor.execute('''
-                INSERT INTO sucursales (nombre, direccion, latitud, longitud)
-                VALUES (?, ?, ?, ?)
-            ''', (nombre, direccion, latitud, longitud))
-            conn.commit()
-            st.success("Sucursal guardada correctamente!")
-        except ValueError as e:
-            st.error(f"Error: {e}")    
-
-elif menu == "Solicitar Recogida":
-    st.header("Solicitar Recogida")
-    
-    # Opción para seleccionar entre Sucursal o Cliente Delivery
-    tipo_recogida = st.radio("Seleccione el tipo de recogida:", ("Sucursal", "Cliente Delivery"))
-
-    if tipo_recogida == "Sucursal":
-        # Opción de recogida en sucursal
-        st.subheader("Registrar Recogida de Sucursal")
-        cursor.execute('SELECT id, nombre FROM sucursales')
-        sucursales = cursor.fetchall()
+        st.header("Ingresar Boleta")
         
-        if sucursales:
-            sucursal_id = st.selectbox("Seleccione la sucursal", [s[0] for s in sucursales], format_func=lambda x: [s[1] for s in sucursales if s[0] == x][0])
-            fecha_recogida = st.date_input("Fecha de Recogida")
-            
-            if st.button("Solicitar Recogida"):
-                # Validar que se haya seleccionado una sucursal
-                if not sucursal_id:
-                    st.error("Debe seleccionar una sucursal.")
-                # Validar que la fecha no sea en el pasado
-                elif fecha_recogida < datetime.date.today():
-                    st.error("La fecha de recogida no puede ser en el pasado.")
-                else:
-                    # Registrar la recogida en la tabla recogidas
-                    cursor.execute('''
-                        INSERT INTO recogidas (sucursal_id, fecha)
-                        VALUES (?, ?)
-                    ''', (sucursal_id, fecha_recogida))
-                    conn.commit()
-
-                    # Programar la entrega dos días después
-                    fecha_entrega = fecha_recogida + datetime.timedelta(days=3)
-                    cursor.execute('''
-                        INSERT INTO entregas (tipo, sucursal_id, fecha_entrega)
-                        VALUES (?, ?, ?)
-                    ''', ("sucursal", sucursal_id, fecha_entrega))
-                    conn.commit()
-
-                    st.success(f"Recogida en sucursal solicitada correctamente. La entrega ha sido agendada para el {fecha_entrega}.")
-        else:
-            st.warning("No hay sucursales registradas.")
-
-    elif tipo_recogida == "Cliente Delivery":
-        # Opción de recogida a domicilio
-        st.subheader("Registrar Cliente para Recogida a Domicilio")
+        # Campos para ingresar los datos de la boleta
+        numero_boleta = st.text_input("Número de Boleta")
         nombre_cliente = st.text_input("Nombre del Cliente")
-        telefono_cliente = st.text_input("Teléfono del Cliente")
-        direccion_cliente = st.text_input("Dirección del Cliente")
-        fecha_recogida = st.date_input("Fecha de Recogida")
+        dni_cliente = st.text_input("DNI del Cliente")
+
+        # Crear dos columnas para Monto a Pagar y Medio de Pago
+        col1, col2 = st.columns(2)  # Dos columnas de igual ancho
+
+        with col1:
+            monto_pagar = st.number_input("Monto a Pagar", min_value=0.0, format="%.2f")
+
+        with col2:
+            medio_pago = st.selectbox("Medio de Pago", ["Efectivo", "Yape", "Plin", "Transferencia"])
         
-        if st.button("Registrar Cliente para Recogida"):
+        # Campo para seleccionar la fecha de registro
+        fecha_registro = st.date_input("Fecha de Registro")
+
+        # Opciones de entrega: Sucursal o Delivery
+        tipo_entrega = st.radio("Tipo de Entrega", ("Sucursal", "Delivery"))
+
+        if tipo_entrega == "Sucursal":
+            # Si es entrega en sucursal, mostrar un desplegable para elegir la sucursal
+            cursor.execute('SELECT id, nombre FROM sucursales')
+            sucursales = cursor.fetchall()
+            if sucursales:
+                sucursal_id = st.selectbox("Seleccione la sucursal", [s[0] for s in sucursales], format_func=lambda x: [s[1] for s in sucursales if s[0] == x][0])
+                direccion = None  # No se necesita dirección para entrega en sucursal
+            else:
+                st.warning("No hay sucursales registradas.")
+                sucursal_id = None
+        elif tipo_entrega == "Delivery":
+            # Si es delivery, no se pide la dirección
+            sucursal_id = None  # No se necesita sucursal para delivery
+            direccion = None  # No se necesita dirección
+
+        # Botón para guardar la boleta
+        if st.button("Guardar Boleta"):
             # Validaciones
             errores = []
 
-            # Validar nombre del cliente
+            # Validar DNI
+            if not dni_cliente or len(dni_cliente.strip()) == 0:
+                errores.append("El DNI del cliente es obligatorio.")
+            elif not dni_cliente.isdigit() or len(dni_cliente) != 8:
+                errores.append("El DNI debe tener exactamente 8 dígitos y solo números.")
+
+            # Validar Número de Boleta
+            if not numero_boleta or len(numero_boleta.strip()) == 0:
+                errores.append("El número de boleta es obligatorio.")
+            elif not numero_boleta.isdigit():
+                errores.append("El número de boleta solo puede contener números.")
+            else:
+                # Verificar si el número de boleta ya existe en la misma sucursal o en delivery
+                if tipo_entrega == "Sucursal":
+                    cursor.execute('''
+                        SELECT COUNT(*) FROM boletas
+                        WHERE numero_boleta = ? AND sucursal_id = ?
+                    ''', (numero_boleta, sucursal_id))
+                elif tipo_entrega == "Delivery":
+                    cursor.execute('''
+                        SELECT COUNT(*) FROM boletas
+                        WHERE numero_boleta = ? AND tipo_entrega = 'Delivery'
+                    ''', (numero_boleta,))
+                
+                count = cursor.fetchone()[0]
+                if count > 0:
+                    errores.append("El número de boleta ya existe para esta sucursal o delivery.")
+
+            # Validar campos obligatorios
             if not nombre_cliente or len(nombre_cliente.strip()) == 0:
                 errores.append("El nombre del cliente es obligatorio.")
-            elif not nombre_cliente.replace(" ", "").isalpha():
-                errores.append("El nombre del cliente solo puede contener letras.")
-
-            # Validar teléfono del cliente
-            if not telefono_cliente or len(telefono_cliente.strip()) == 0:
-                errores.append("El teléfono del cliente es obligatorio.")
-            elif not telefono_cliente.isdigit() or len(telefono_cliente) != 9:
-                errores.append("El teléfono debe tener exactamente 9 dígitos y solo números.")
-
-            # Validar dirección del cliente
-            if not direccion_cliente or len(direccion_cliente.strip()) == 0:
-                errores.append("La dirección del cliente es obligatoria.")
-
-            # Validar fecha de recogida
-            if fecha_recogida < datetime.date.today():
-                errores.append("La fecha de recogida no puede ser en el pasado.")
+            if not monto_pagar or monto_pagar <= 0:
+                errores.append("El monto a pagar debe ser mayor que 0.")
+            if not fecha_registro:
+                errores.append("La fecha de registro es obligatoria.")
 
             # Mostrar errores o guardar los datos
             if errores:
                 for error in errores:
                     st.error(error)
             else:
-                # Registrar el cliente en la tabla clientes_delivery
+                # Insertar los datos en la tabla boletas
                 cursor.execute('''
-                    INSERT INTO clientes_delivery (nombre, telefono, direccion, fecha_recogida)
+                    INSERT INTO boletas (
+                        numero_boleta, nombre_cliente, dni_cliente, monto_pagar, medio_pago, tipo_entrega, sucursal_id, direccion, fecha_registro
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (numero_boleta, nombre_cliente, dni_cliente, monto_pagar, medio_pago, tipo_entrega, sucursal_id, direccion, fecha_registro))
+                conn.commit()
+                st.success("Boleta guardada correctamente!")
+
+    elif menu == "Ingresar Sucursal":
+        st.header("Ingresar Nueva Sucursal")
+        nombre = st.text_input("Nombre de la Sucursal")
+        direccion = st.text_input("Dirección")
+        if st.button("Guardar Sucursal"):
+            try:
+                latitud, longitud = obtener_coordenadas(direccion)
+                cursor.execute('''
+                    INSERT INTO sucursales (nombre, direccion, latitud, longitud)
                     VALUES (?, ?, ?, ?)
-                ''', (nombre_cliente, telefono_cliente, direccion_cliente, fecha_recogida))
-                cliente_id = cursor.lastrowid  # Obtener el ID del cliente recién insertado
+                ''', (nombre, direccion, latitud, longitud))
                 conn.commit()
+                st.success("Sucursal guardada correctamente!")
+            except ValueError as e:
+                st.error(f"Error: {e}")    
 
-                # Programar la entrega dos días después
-                fecha_entrega = fecha_recogida + datetime.timedelta(days=3)
-                cursor.execute('''
-                    INSERT INTO entregas (tipo, cliente_id, fecha_entrega)
-                    VALUES (?, ?, ?)
-                ''', ("delivery", cliente_id, fecha_entrega))
-                conn.commit()
-
-                st.success(f"Cliente registrado para recogida a domicilio correctamente. La entrega ha sido agendada para el {fecha_entrega}.")
-
-elif menu == "Datos Clientes de Delivery":
-    st.header("Datos Clientes de Delivery")
-    
-    # Obtener todos los clientes de delivery de la base de datos
-    cursor.execute('SELECT * FROM clientes_delivery')
-    clientes_delivery = cursor.fetchall()
-    
-    if clientes_delivery:
-        # Mostrar los datos en una tabla
-        st.subheader("Lista de Clientes de Delivery")
-        df = pd.DataFrame(clientes_delivery, columns=["ID", "Nombre", "Teléfono", "Dirección", "Fecha de Recogida"])
-        st.dataframe(df)
-    else:
-        st.info("No hay clientes de delivery registrados.")
-
-elif menu == "Datos de Recojos":
-    st.header("Datos de Recojos")
-    
-    # Filtro por fecha
-    fecha_filtro = st.date_input("Filtrar por fecha")
-
-    # Mostrar recojos en sucursal
-    st.subheader("Recojos en Sucursal")
-    cursor.execute('''
-        SELECT s.direccion, r.fecha
-        FROM recogidas r
-        JOIN sucursales s ON r.sucursal_id = s.id
-        WHERE r.fecha = ?
-    ''', (fecha_filtro,))
-    recojos_sucursal = cursor.fetchall()
-
-    if recojos_sucursal:
-        df_sucursal = pd.DataFrame(recojos_sucursal, columns=["Dirección de la Sucursal", "Fecha de Recojo"])
-        st.dataframe(df_sucursal)
-    else:
-        st.info("No hay recojos en sucursal para la fecha seleccionada.")
-
-    # Mostrar recojos de clientes (delivery)
-    st.subheader("Recojos de Clientes (Delivery)")
-    cursor.execute('''
-        SELECT nombre, telefono, direccion, fecha_recogida
-        FROM clientes_delivery
-        WHERE fecha_recogida = ?
-    ''', (fecha_filtro,))
-    recojos_delivery = cursor.fetchall()
-
-    if recojos_delivery:
-        df_delivery = pd.DataFrame(recojos_delivery, columns=["Nombre del Cliente", "Teléfono", "Dirección", "Fecha de Recojo"])
-        st.dataframe(df_delivery)
-    else:
-        st.info("No hay recojos de clientes (delivery) para la fecha seleccionada.")
-
-elif menu == "Datos de Boletas Registradas":
-    st.header("Datos de Boletas Registradas")
-    
-    # Filtro por rango de fechas
-    st.subheader("Filtrar por Rango de Fechas")
-    fecha_inicio = st.date_input("Fecha de inicio")
-    fecha_fin = st.date_input("Fecha de fin")
-
-    # Filtro por tipo de entrega (sucursal o delivery)
-    st.subheader("Filtrar por Tipo de Entrega")
-    tipo_entrega_filtro = st.radio("Tipo de entrega", ("Todas", "Sucursal", "Delivery"))
-
-    # Si el tipo de entrega es sucursal, mostrar un desplegable para elegir la sucursal
-    sucursal_filtro = None
-    if tipo_entrega_filtro == "Sucursal":
-        cursor.execute('SELECT id, nombre FROM sucursales')
-        sucursales = cursor.fetchall()
-        if sucursales:
-            sucursal_filtro = st.selectbox("Seleccione la sucursal", [s[0] for s in sucursales], format_func=lambda x: [s[1] for s in sucursales if s[0] == x][0])
-        else:
-            st.warning("No hay sucursales registradas.")
-
-    # Construir la consulta SQL según los filtros seleccionados
-    query = '''
-        SELECT 
-            b.numero_boleta, 
-            b.nombre_cliente, 
-            b.dni_cliente, 
-            b.monto_pagar, 
-            b.medio_pago, 
-            b.tipo_entrega, 
-            s.nombre AS sucursal, 
-            b.fecha_registro
-        FROM boletas b
-        LEFT JOIN sucursales s ON b.sucursal_id = s.id
-        WHERE 1=1
-    '''
-    params = []
-
-    # Aplicar filtro por rango de fechas
-    if fecha_inicio and fecha_fin:
-        query += " AND b.fecha_registro BETWEEN ? AND ?"
-        params.extend([fecha_inicio, fecha_fin])
-
-    # Aplicar filtro por tipo de entrega
-    if tipo_entrega_filtro == "Sucursal":
-        if sucursal_filtro:
-            query += " AND b.tipo_entrega = ? AND b.sucursal_id = ?"
-            params.extend(["Sucursal", sucursal_filtro])
-        else:
-            st.warning("Seleccione una sucursal para filtrar.")
-    elif tipo_entrega_filtro == "Delivery":
-        query += " AND b.tipo_entrega = ?"
-        params.append("Delivery")
-
-    # Ejecutar la consulta
-    try:
-        cursor.execute(query, params)
-        boletas_filtradas = cursor.fetchall()
-
-        # Mostrar los resultados en una tabla
-        if boletas_filtradas:
-            st.subheader("Boletas Registradas")
-            df = pd.DataFrame(boletas_filtradas, columns=[
-                "Número de Boleta", "Nombre del Cliente", "DNI", "Monto a Pagar", 
-                "Medio de Pago", "Tipo de Entrega", "Sucursal", "Dirección", "Fecha de Registro"
-            ])
-            st.dataframe(df)
-
-            # Botón para exportar a Excel
-            if st.button("Exportar a Excel"):
-                # Crear un archivo Excel
-                output = io.BytesIO()
-                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                    df.to_excel(writer, index=False, sheet_name='Boletas')
-                output.seek(0)
-
-                # Descargar el archivo
-                st.download_button(
-                    label="Descargar archivo Excel",
-                    data=output,
-                    file_name="boletas_registradas.xlsx",
-                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                )
-                st.success("Archivo Excel generado correctamente.")
-        else:
-            st.info("No hay boletas registradas que coincidan con los filtros seleccionados.")
-    except sqlite3.OperationalError as e:
-        st.error(f"Error al ejecutar la consulta SQL: {e}")
-    except Exception as e:
-        st.error(f"Error inesperado: {e}")
+    elif menu == "Solicitar Recogida":
+        st.header("Solicitar Recogida")
         
-elif menu == "Ver Ruta Optimizada":
-    st.header("Ruta Optimizada")
-    fecha = st.date_input("Seleccione la fecha para ver la ruta")
-    if st.button("Generar Ruta"):
-        # Obtener pedidos, sucursales y recogidas para la fecha seleccionada
-        cursor.execute('''
-            SELECT direccion, latitud, longitud FROM pedidos
-            WHERE fecha_entrega = ?
-        ''', (fecha,))
-        pedidos = cursor.fetchall()
+        # Opción para seleccionar entre Sucursal o Cliente Delivery
+        tipo_recogida = st.radio("Seleccione el tipo de recogida:", ("Sucursal", "Cliente Delivery"))
 
-        cursor.execute('''
-            SELECT s.direccion, s.latitud, s.longitud
-            FROM sucursales s
-            JOIN recogidas r ON s.id = r.sucursal_id
-            WHERE r.fecha = ?
-        ''', (fecha,))
-        recogidas = cursor.fetchall()
+        if tipo_recogida == "Sucursal":
+            # Opción de recogida en sucursal
+            st.subheader("Registrar Recogida de Sucursal")
+            cursor.execute('SELECT id, nombre FROM sucursales')
+            sucursales = cursor.fetchall()
+            
+            if sucursales:
+                sucursal_id = st.selectbox("Seleccione la sucursal", [s[0] for s in sucursales], format_func=lambda x: [s[1] for s in sucursales if s[0] == x][0])
+                fecha_recogida = st.date_input("Fecha de Recogida")
+                
+                if st.button("Solicitar Recogida"):
+                    # Validar que se haya seleccionado una sucursal
+                    if not sucursal_id:
+                        st.error("Debe seleccionar una sucursal.")
+                    # Validar que la fecha no sea en el pasado
+                    elif fecha_recogida < datetime.date.today():
+                        st.error("La fecha de recogida no puede ser en el pasado.")
+                    else:
+                        # Registrar la recogida en la tabla recogidas
+                        cursor.execute('''
+                            INSERT INTO recogidas (sucursal_id, fecha)
+                            VALUES (?, ?)
+                        ''', (sucursal_id, fecha_recogida))
+                        conn.commit()
 
-        # Obtener entregas programadas para la fecha seleccionada
-        cursor.execute('''
-            SELECT 
-                CASE 
-                    WHEN e.tipo = 'sucursal' THEN s.direccion
-                    WHEN e.tipo = 'delivery' THEN c.direccion
-                END AS direccion,
-                CASE 
-                    WHEN e.tipo = 'sucursal' THEN s.latitud
-                    WHEN e.tipo = 'delivery' THEN c.latitud
-                END AS latitud,
-                CASE 
-                    WHEN e.tipo = 'sucursal' THEN s.longitud
-                    WHEN e.tipo = 'delivery' THEN c.longitud
-                END AS longitud
-            FROM entregas e
-            LEFT JOIN sucursales s ON e.sucursal_id = s.id
-            LEFT JOIN clientes_delivery c ON e.cliente_id = c.id
-            WHERE e.fecha_entrega = ?
-        ''', (fecha,))
-        entregas = cursor.fetchall()
+                        # Programar la entrega dos días después
+                        fecha_entrega = fecha_recogida + datetime.timedelta(days=3)
+                        cursor.execute('''
+                            INSERT INTO entregas (tipo, sucursal_id, fecha_entrega)
+                            VALUES (?, ?, ?)
+                        ''', ("sucursal", sucursal_id, fecha_entrega))
+                        conn.commit()
 
-        # Combinar pedidos, sucursales, recogidas y entregas
-        ubicaciones = recogidas + entregas
-
-        # Calcular la matriz de distancias
-        with st.spinner("Calculando matriz de distancias..."):
-            matriz_distancias = calcular_matriz_distancias(ubicaciones)
-
-        # Optimizar la ruta
-        with st.spinner("Optimizando ruta..."):
-            ruta_optimizada = optimizar_ruta(matriz_distancias)
-
-        if ruta_optimizada:
-            st.write("Ruta optimizada:")
-            for i, idx in enumerate(ruta_optimizada):
-                st.write(f"{i+1}. {ubicaciones[idx][0]}")  # Muestra los nombres de las ubicaciones
-
-            # Obtener coordenadas en el orden optimizado
-            coordenadas_ruta = [[ubicaciones[idx][2], ubicaciones[idx][1]] for idx in ruta_optimizada]
-
-            # Obtener la ruta real usando OpenRouteService
-            with st.spinner("Calculando ruta real..."):
-                ruta_real = obtener_ruta_real(coordenadas_ruta, ors_api_key)
-
-            if ruta_real:
-                # Crear un mapa con Folium
-                mapa = folium.Map(location=[-16.3989, -71.5350], zoom_start=14)
-
-                # Dibujar la ruta real
-                folium.GeoJson(ruta_real, name="Ruta optimizada").add_to(mapa)
-
-                # Añadir marcadores para cada punto
-                for idx in ruta_optimizada:
-                    ubicacion = ubicaciones[idx]
-                    folium.Marker(
-                        location=[ubicacion[1], ubicacion[2]],
-                        popup=ubicacion[0]
-                    ).add_to(mapa)
-
-                # Mostrar el mapa en Streamlit
-                folium_static(mapa)
+                        st.success(f"Recogida en sucursal solicitada correctamente. La entrega ha sido agendada para el {fecha_entrega}.")
             else:
-                st.error("No se pudo calcular la ruta real.")
-        else:
-            st.error("No se pudo optimizar la ruta.")
+                st.warning("No hay sucursales registradas.")
 
-# Botón para cerrar sesión
+        elif tipo_recogida == "Cliente Delivery":
+            # Opción de recogida a domicilio
+            st.subheader("Registrar Cliente para Recogida a Domicilio")
+            nombre_cliente = st.text_input("Nombre del Cliente")
+            telefono_cliente = st.text_input("Teléfono del Cliente")
+            direccion_cliente = st.text_input("Dirección del Cliente")
+            fecha_recogida = st.date_input("Fecha de Recogida")
+            
+            if st.button("Registrar Cliente para Recogida"):
+                # Validaciones
+                errores = []
+
+                # Validar nombre del cliente
+                if not nombre_cliente or len(nombre_cliente.strip()) == 0:
+                    errores.append("El nombre del cliente es obligatorio.")
+                elif not nombre_cliente.replace(" ", "").isalpha():
+                    errores.append("El nombre del cliente solo puede contener letras.")
+
+                # Validar teléfono del cliente
+                if not telefono_cliente or len(telefono_cliente.strip()) == 0:
+                    errores.append("El teléfono del cliente es obligatorio.")
+                elif not telefono_cliente.isdigit() or len(telefono_cliente) != 9:
+                    errores.append("El teléfono debe tener exactamente 9 dígitos y solo números.")
+
+                # Validar dirección del cliente
+                if not direccion_cliente or len(direccion_cliente.strip()) == 0:
+                    errores.append("La dirección del cliente es obligatoria.")
+
+                # Validar fecha de recogida
+                if fecha_recogida < datetime.date.today():
+                    errores.append("La fecha de recogida no puede ser en el pasado.")
+
+                # Mostrar errores o guardar los datos
+                if errores:
+                    for error in errores:
+                        st.error(error)
+                else:
+                    # Registrar el cliente en la tabla clientes_delivery
+                    cursor.execute('''
+                        INSERT INTO clientes_delivery (nombre, telefono, direccion, fecha_recogida)
+                        VALUES (?, ?, ?, ?)
+                    ''', (nombre_cliente, telefono_cliente, direccion_cliente, fecha_recogida))
+                    cliente_id = cursor.lastrowid  # Obtener el ID del cliente recién insertado
+                    conn.commit()
+
+                    # Programar la entrega dos días después
+                    fecha_entrega = fecha_recogida + datetime.timedelta(days=3)
+                    cursor.execute('''
+                        INSERT INTO entregas (tipo, cliente_id, fecha_entrega)
+                        VALUES (?, ?, ?)
+                    ''', ("delivery", cliente_id, fecha_entrega))
+                    conn.commit()
+
+                    st.success(f"Cliente registrado para recogida a domicilio correctamente. La entrega ha sido agendada para el {fecha_entrega}.")
+
+    elif menu == "Datos Clientes de Delivery":
+        st.header("Datos Clientes de Delivery")
+        
+        # Obtener todos los clientes de delivery de la base de datos
+        cursor.execute('SELECT * FROM clientes_delivery')
+        clientes_delivery = cursor.fetchall()
+        
+        if clientes_delivery:
+            # Mostrar los datos en una tabla
+            st.subheader("Lista de Clientes de Delivery")
+            df = pd.DataFrame(clientes_delivery, columns=["ID", "Nombre", "Teléfono", "Dirección", "Fecha de Recogida"])
+            st.dataframe(df)
+        else:
+            st.info("No hay clientes de delivery registrados.")
+
+    elif menu == "Datos de Recojos":
+        st.header("Datos de Recojos")
+        
+        # Filtro por fecha
+        fecha_filtro = st.date_input("Filtrar por fecha")
+
+        # Mostrar recojos en sucursal
+        st.subheader("Recojos en Sucursal")
+        cursor.execute('''
+            SELECT s.direccion, r.fecha
+            FROM recogidas r
+            JOIN sucursales s ON r.sucursal_id = s.id
+            WHERE r.fecha = ?
+        ''', (fecha_filtro,))
+        recojos_sucursal = cursor.fetchall()
+
+        if recojos_sucursal:
+            df_sucursal = pd.DataFrame(recojos_sucursal, columns=["Dirección de la Sucursal", "Fecha de Recojo"])
+            st.dataframe(df_sucursal)
+        else:
+            st.info("No hay recojos en sucursal para la fecha seleccionada.")
+
+        # Mostrar recojos de clientes (delivery)
+        st.subheader("Recojos de Clientes (Delivery)")
+        cursor.execute('''
+            SELECT nombre, telefono, direccion, fecha_recogida
+            FROM clientes_delivery
+            WHERE fecha_recogida = ?
+        ''', (fecha_filtro,))
+        recojos_delivery = cursor.fetchall()
+
+        if recojos_delivery:
+            df_delivery = pd.DataFrame(recojos_delivery, columns=["Nombre del Cliente", "Teléfono", "Dirección", "Fecha de Recogida"])
+            st.dataframe(df_delivery)
+        else:
+            st.info("No hay recojos de clientes (delivery) para la fecha seleccionada.")
+
+    elif menu == "Datos de Boletas Registradas":
+        st.header("Datos de Boletas Registradas")
+        
+        # Filtro por rango de fechas
+        st.subheader("Filtrar por Rango de Fechas")
+        fecha_inicio = st.date_input("Fecha de inicio")
+        fecha_fin = st.date_input("Fecha de fin")
+
+        # Filtro por tipo de entrega (sucursal o delivery)
+        st.subheader("Filtrar por Tipo de Entrega")
+        tipo_entrega_filtro = st.radio("Tipo de entrega", ("Todas", "Sucursal", "Delivery"))
+
+        # Si el tipo de entrega es sucursal, mostrar un desplegable para elegir la sucursal
+        sucursal_filtro = None
+        if tipo_entrega_filtro == "Sucursal":
+            cursor.execute('SELECT id, nombre FROM sucursales')
+            sucursales = cursor.fetchall()
+            if sucursales:
+                sucursal_filtro = st.selectbox("Seleccione la sucursal", [s[0] for s in sucursales], format_func=lambda x: [s[1] for s in sucursales if s[0] == x][0])
+            else:
+                st.warning("No hay sucursales registradas.")
+
+        # Construir la consulta SQL según los filtros seleccionados
+        query = '''
+            SELECT 
+                b.numero_boleta, 
+                b.nombre_cliente, 
+                b.dni_cliente, 
+                b.monto_pagar, 
+                b.medio_pago, 
+                b.tipo_entrega, 
+                s.nombre AS sucursal, 
+                b.fecha_registro
+            FROM boletas b
+            LEFT JOIN sucursales s ON b.sucursal_id = s.id
+            WHERE 1=1
+        '''
+        params = []
+
+        # Aplicar filtro por rango de fechas
+        if fecha_inicio and fecha_fin:
+            query += " AND b.fecha_registro BETWEEN ? AND ?"
+            params.extend([fecha_inicio, fecha_fin])
+
+        # Aplicar filtro por tipo de entrega
+        if tipo_entrega_filtro == "Sucursal":
+            if sucursal_filtro:
+                query += " AND b.tipo_entrega = ? AND b.sucursal_id = ?"
+                params.extend(["Sucursal", sucursal_filtro])
+            else:
+                st.warning("Seleccione una sucursal para filtrar.")
+        elif tipo_entrega_filtro == "Delivery":
+            query += " AND b.tipo_entrega = ?"
+            params.append("Delivery")
+
+        # Ejecutar la consulta
+        try:
+            cursor.execute(query, params)
+            boletas_filtradas = cursor.fetchall()
+
+            # Mostrar los resultados en una tabla
+            if boletas_filtradas:
+                st.subheader("Boletas Registradas")
+                df = pd.DataFrame(boletas_filtradas, columns=[
+                    "Número de Boleta", "Nombre del Cliente", "DNI", "Monto a Pagar", 
+                    "Medio de Pago", "Tipo de Entrega", "Sucursal", "Fecha de Registro"
+                ])
+                st.dataframe(df)
+
+                # Botón para exportar a Excel
+                if st.button("Exportar a Excel"):
+                    # Crear un archivo Excel
+                    output = io.BytesIO()
+                    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                        df.to_excel(writer, index=False, sheet_name='Boletas')
+                    output.seek(0)
+
+                    # Descargar el archivo
+                    st.download_button(
+                        label="Descargar archivo Excel",
+                        data=output,
+                        file_name="boletas_registradas.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                    )
+                    st.success("Archivo Excel generado correctamente.")
+            else:
+                st.info("No hay boletas registradas que coincidan con los filtros seleccionados.")
+        except sqlite3.OperationalError as e:
+            st.error(f"Error al ejecutar la consulta SQL: {e}")
+        except Exception as e:
+            st.error(f"Error inesperado: {e}")
+        
+    elif menu == "Ver Ruta Optimizada":
+        st.header("Ruta Optimizada")
+        fecha = st.date_input("Seleccione la fecha para ver la ruta")
+        if st.button("Generar Ruta"):
+            # Obtener pedidos, sucursales y recogidas para la fecha seleccionada
+            cursor.execute('''
+                SELECT direccion, latitud, longitud FROM pedidos
+                WHERE fecha_entrega = ?
+            ''', (fecha,))
+            pedidos = cursor.fetchall()
+
+            cursor.execute('''
+                SELECT s.direccion, s.latitud, s.longitud
+                FROM sucursales s
+                JOIN recogidas r ON s.id = r.sucursal_id
+                WHERE r.fecha = ?
+            ''', (fecha,))
+            recogidas = cursor.fetchall()
+
+            # Obtener entregas programadas para la fecha seleccionada
+            cursor.execute('''
+                SELECT 
+                    CASE 
+                        WHEN e.tipo = 'sucursal' THEN s.direccion
+                        WHEN e.tipo = 'delivery' THEN c.direccion
+                    END AS direccion,
+                    CASE 
+                        WHEN e.tipo = 'sucursal' THEN s.latitud
+                        WHEN e.tipo = 'delivery' THEN c.latitud
+                    END AS latitud,
+                    CASE 
+                        WHEN e.tipo = 'sucursal' THEN s.longitud
+                        WHEN e.tipo = 'delivery' THEN c.longitud
+                    END AS longitud
+                FROM entregas e
+                LEFT JOIN sucursales s ON e.sucursal_id = s.id
+                LEFT JOIN clientes_delivery c ON e.cliente_id = c.id
+                WHERE e.fecha_entrega = ?
+            ''', (fecha,))
+            entregas = cursor.fetchall()
+
+            # Combinar pedidos, sucursales, recogidas y entregas
+            ubicaciones = recogidas + entregas
+
+            # Calcular la matriz de distancias
+            with st.spinner("Calculando matriz de distancias..."):
+                matriz_distancias = calcular_matriz_distancias(ubicaciones)
+
+            # Optimizar la ruta
+            with st.spinner("Optimizando ruta..."):
+                ruta_optimizada = optimizar_ruta(matriz_distancias)
+
+            if ruta_optimizada:
+                st.write("Ruta optimizada:")
+                for i, idx in enumerate(ruta_optimizada):
+                    st.write(f"{i+1}. {ubicaciones[idx][0]}")  # Muestra los nombres de las ubicaciones
+
+                # Obtener coordenadas en el orden optimizado
+                coordenadas_ruta = [[ubicaciones[idx][2], ubicaciones[idx][1]] for idx in ruta_optimizada]
+
+                # Obtener la ruta real usando OpenRouteService
+                with st.spinner("Calculando ruta real..."):
+                    ruta_real = obtener_ruta_real(coordenadas_ruta, ors_api_key)
+
+                if ruta_real:
+                    # Crear un mapa con Folium
+                    mapa = folium.Map(location=[-16.3989, -71.5350], zoom_start=14)
+
+                    # Dibujar la ruta real
+                    folium.GeoJson(ruta_real, name="Ruta optimizada").add_to(mapa)
+
+                    # Añadir marcadores para cada punto
+                    for idx in ruta_optimizada:
+                        ubicacion = ubicaciones[idx]
+                        folium.Marker(
+                            location=[ubicacion[1], ubicacion[2]],
+                            popup=ubicacion[0]
+                        ).add_to(mapa)
+
+                    # Mostrar el mapa en Streamlit
+                    folium_static(mapa)
+                else:
+                    st.error("No se pudo calcular la ruta real.")
+            else:
+                st.error("No se pudo optimizar la ruta.")
+
+    # Botón para cerrar sesión
     if st.sidebar.button("Cerrar Sesión"):
         del st.session_state['perfil']
         del st.session_state['usuario']
