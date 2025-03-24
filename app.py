@@ -230,8 +230,8 @@ else:
         # Mostrar el nombre de la lavandería
         st.title("Lavanderías Americanas")
 
-# Título de la aplicación
-#st.title("Optimización de Rutas para Lavandería")
+    # Título de la aplicación
+    st.title("Optimización de Rutas para Lavandería")
 
 # Menú de opciones
 # menu = st.sidebar.selectbox("Menú", ["Ingresar Boleta", "Ingresar Sucursal", "Solicitar Recogida", "Datos de Recojos", "Datos de Boletas Registradas", "Ver Ruta Optimizada"])
@@ -241,7 +241,7 @@ else:
 
     # Aquí va el código de las pestañas (Ingresar Boleta, Ingresar Sucursal, etc.)
     if menu == "Ingresar Boleta":
-    st.header("Ingresar Boleta")
+       st.header("Ingresar Boleta")
     
     # Campos para ingresar los datos de la boleta
     numero_boleta = st.text_input("Número de Boleta")
