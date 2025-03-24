@@ -22,20 +22,25 @@ load_dotenv()
 ors_api_key = "5b3ce3597851110001cf62486bc22aa6557847f3a94a99f41f14ec16"  # Reemplaza con tu API key
 
 # Función para conectar a Supabase
-def conectar_db():
+def conectar_supabase():
     try:
         conn = psycopg2.connect(
             host=os.getenv("DB_HOST"),
-            database=os.getenv("DB_NAME"),
+            dbname=os.getenv("DB_NAME"),
             user=os.getenv("DB_USER"),
             password=os.getenv("DB_PASSWORD"),
             port=os.getenv("DB_PORT"),
-            sslmode="require"  # ¡Importante para Supabase!
+            sslmode="require",
+            connect_timeout=3
         )
+        print("✅ ¡Conexión exitosa!")
         return conn
     except Exception as e:
-        st.error(f"Error de conexión: Verifica tus credenciales en Supabase")
-        st.error(f"Detalle técnico: {str(e).split('.')[0]}")  # Muestra solo la primera parte del error
+        print(f"❌ Error: {str(e).split('.')[0]}")
+        print("Verifica:")
+        print("1. Archivo .env en la misma carpeta")
+        print("2. Credenciales correctas")
+        print("3. IP permitida en Supabase")
         return None
 
 # Función para obtener coordenadas de una dirección
