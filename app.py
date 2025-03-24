@@ -355,7 +355,10 @@ elif menu == "Datos de Boletas Registradas":
     if tipo_entrega_filtro == "Sucursal":
         cursor.execute('SELECT id, nombre FROM sucursales')
         sucursales = cursor.fetchall()
-        sucursal_filtro = st.selectbox("Seleccione la sucursal", [s[0] for s in sucursales], format_func=lambda x: [s[1] for s in sucursales if s[0] == x][0])
+        if sucursales:
+            sucursal_filtro = st.selectbox("Seleccione la sucursal", [s[0] for s in sucursales], format_func=lambda x: [s[1] for s in sucursales if s[0] == x][0])
+        else:
+            st.warning("No hay sucursales registradas.")
 
     # Construir la consulta SQL según los filtros seleccionados
     query = '''
@@ -382,43 +385,51 @@ elif menu == "Datos de Boletas Registradas":
 
     # Aplicar filtro por tipo de entrega
     if tipo_entrega_filtro == "Sucursal":
-        query += " AND b.tipo_entrega = ? AND b.sucursal_id = ?"
-        params.extend(["sucursal", sucursal_filtro])
+        if sucursal_filtro:
+            query += " AND b.tipo_entrega = ? AND b.sucursal_id = ?"
+            params.extend(["Sucursal", sucursal_filtro])
+        else:
+            st.warning("Seleccione una sucursal para filtrar.")
     elif tipo_entrega_filtro == "Delivery":
         query += " AND b.tipo_entrega = ?"
-        params.append("delivery")
+        params.append("Delivery")
 
     # Ejecutar la consulta
-    cursor.execute(query, params)
-    boletas_filtradas = cursor.fetchall()
+    try:
+        cursor.execute(query, params)
+        boletas_filtradas = cursor.fetchall()
 
-    # Mostrar los resultados en una tabla
-    if boletas_filtradas:
-        st.subheader("Boletas Registradas")
-        df = pd.DataFrame(boletas_filtradas, columns=[
-            "Número de Boleta", "Nombre del Cliente", "DNI", "Monto a Pagar", 
-            "Medio de Pago", "Tipo de Entrega", "Sucursal", "Dirección", "Fecha de Registro"
-        ])
-        st.dataframe(df)
+        # Mostrar los resultados en una tabla
+        if boletas_filtradas:
+            st.subheader("Boletas Registradas")
+            df = pd.DataFrame(boletas_filtradas, columns=[
+                "Número de Boleta", "Nombre del Cliente", "DNI", "Monto a Pagar", 
+                "Medio de Pago", "Tipo de Entrega", "Sucursal", "Dirección", "Fecha de Registro"
+            ])
+            st.dataframe(df)
 
-        # Botón para exportar a Excel
-        if st.button("Exportar a Excel"):
-            # Crear un archivo Excel
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                df.to_excel(writer, index=False, sheet_name='Boletas')
-            output.seek(0)
+            # Botón para exportar a Excel
+            if st.button("Exportar a Excel"):
+                # Crear un archivo Excel
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                    df.to_excel(writer, index=False, sheet_name='Boletas')
+                output.seek(0)
 
-            # Descargar el archivo
-            st.download_button(
-                label="Descargar archivo Excel",
-                data=output,
-                file_name="boletas_registradas.xlsx",
-                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            )
-            st.success("Archivo Excel generado correctamente.")
-    else:
-        st.info("No hay boletas registradas que coincidan con los filtros seleccionados.")
+                # Descargar el archivo
+                st.download_button(
+                    label="Descargar archivo Excel",
+                    data=output,
+                    file_name="boletas_registradas.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
+                st.success("Archivo Excel generado correctamente.")
+        else:
+            st.info("No hay boletas registradas que coincidan con los filtros seleccionados.")
+    except sqlite3.OperationalError as e:
+        st.error(f"Error al ejecutar la consulta SQL: {e}")
+    except Exception as e:
+        st.error(f"Error inesperado: {e}")
         
 elif menu == "Ver Ruta Optimizada":
     st.header("Ruta Optimizada")
