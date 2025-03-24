@@ -35,13 +35,12 @@ def conectar_db():
     """Función de conexión mejorada con manejo de errores"""
     try:
         conn = psycopg2.connect(
-            host=os.getenv("DB_HOST", "db.tu_id.supabase.co"),  # Valor por defecto como backup
-            dbname=os.getenv("DB_NAME", "postgres"),
-            user=os.getenv("DB_USER", "postgres"),
-            password=os.getenv("DB_PASSWORD"),  # Este DEBE estar en .env
-            port=os.getenv("DB_PORT", "5432"),
-            sslmode="require",
-            connect_timeout=5
+            host=os.getenv("DB_HOST"),
+            dbname=os.getenv("DB_NAME"),
+            user=os.getenv("DB_USER"),
+            password=os.getenv("DB_PASSWORD"),
+            port=os.getenv("DB_PORT"),
+            sslmode="require"
         )
         
         # Test de conexión
@@ -55,10 +54,6 @@ def conectar_db():
     except Exception as e:
         st.error("🔴 Error crítico de conexión")
         st.error(f"Detalle: {str(e).split('.')[0]}")
-        st.info("ℹ️ Verifica que:")
-        st.info("1. El archivo .env existe con las credenciales correctas")
-        st.info("2. Tu IP está permitida en Supabase (Settings > Database)")
-        st.info("3. El servicio de Supabase está activo")
         return None
 
 # Función para obtener coordenadas de una dirección
