@@ -370,7 +370,6 @@ elif menu == "Datos de Boletas Registradas":
             b.medio_pago, 
             b.tipo_entrega, 
             s.nombre AS sucursal, 
-            b.direccion,
             b.fecha_registro
         FROM boletas b
         LEFT JOIN sucursales s ON b.sucursal_id = s.id
