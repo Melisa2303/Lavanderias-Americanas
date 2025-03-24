@@ -93,17 +93,6 @@ cursor = conn.cursor()
 
 # Crear tablas si no existen
 cursor.execute('''
-    CREATE TABLE IF NOT EXISTS pedidos (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        numero_boleta TEXT,
-        direccion TEXT,
-        fecha_entrega DATE,
-        latitud REAL,
-        longitud REAL
-    )
-''')
-
-cursor.execute('''
     CREATE TABLE IF NOT EXISTS sucursales (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         nombre TEXT,
@@ -161,7 +150,6 @@ cursor.execute('''
         tipo_entrega TEXT NOT NULL,
         sucursal_id INTEGER,
         direccion TEXT,
-        articulos_lavados TEXT,
         fecha_registro DATE  -- Nueva columna para la fecha de registro
     )
 ''')
@@ -207,28 +195,20 @@ if menu == "Ingresar Boleta":
         sucursal_id = None  # No se necesita sucursal para delivery
         direccion = None  # No se necesita dirección
 
-    # Campo para seleccionar los artículos lavados
-    st.subheader("Artículos Lavados")
-    tipos_articulos = ["Ropa de cama", "Prendas de vestir", "Otros artículos"]
-    articulos_seleccionados = st.multiselect("Seleccione los artículos lavados", tipos_articulos)
-
-    # Convertir la lista de artículos seleccionados a una cadena de texto separada por comas
-    articulos_lavados_str = ", ".join(articulos_seleccionados)
-
     # Botón para guardar la boleta
     if st.button("Guardar Boleta"):
         if numero_boleta and nombre_cliente and dni_cliente and monto_pagar and medio_pago:
             # Insertar los datos en la tabla boletas
             cursor.execute('''
                 INSERT INTO boletas (
-                    numero_boleta, nombre_cliente, dni_cliente, monto_pagar, medio_pago, tipo_entrega, sucursal_id, direccion, articulos_lavados, fecha_registro
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (numero_boleta, nombre_cliente, dni_cliente, monto_pagar, medio_pago, tipo_entrega, sucursal_id, direccion, articulos_lavados_str, fecha_registro))
+                    numero_boleta, nombre_cliente, dni_cliente, monto_pagar, medio_pago, tipo_entrega, sucursal_id, direccion, fecha_registro
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (numero_boleta, nombre_cliente, dni_cliente, monto_pagar, medio_pago, tipo_entrega, sucursal_id, direccion, fecha_registro))
             conn.commit()
             st.success("Boleta guardada correctamente!")
         else:
             st.error("Por favor, complete todos los campos.")
-            
+
 elif menu == "Ingresar Sucursal":
     st.header("Ingresar Nueva Sucursal")
     nombre = st.text_input("Nombre de la Sucursal")
