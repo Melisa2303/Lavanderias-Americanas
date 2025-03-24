@@ -161,7 +161,7 @@ st.title("Optimización de Rutas para Lavandería")
 # Menú de opciones
 menu = st.sidebar.selectbox("Menú", ["Ingresar Boleta", "Ingresar Sucursal", "Solicitar Recogida", "Datos de Recojos", "Datos de Boletas Registradas", "Ver Ruta Optimizada"])
 
-elif menu == "Ingresar Boleta":
+if menu == "Ingresar Boleta":
     st.header("Ingresar Boleta")
     
     # Campos para ingresar los datos de la boleta
