@@ -161,7 +161,7 @@ st.title("Optimización de Rutas para Lavandería")
 # Menú de opciones
 menu = st.sidebar.selectbox("Menú", ["Ingresar Boleta", "Ingresar Sucursal", "Solicitar Recogida", "Datos de Recojos", "Datos de Boletas Registradas", "Ver Ruta Optimizada"])
 
-if menu == "Ingresar Boleta":
+elif menu == "Ingresar Boleta":
     st.header("Ingresar Boleta")
     
     # Campos para ingresar los datos de la boleta
@@ -169,14 +169,14 @@ if menu == "Ingresar Boleta":
     nombre_cliente = st.text_input("Nombre del Cliente")
     dni_cliente = st.text_input("DNI del Cliente")
 
-    # Crear dos columnas para Monto a Pagar y Medio de 
+    # Crear dos columnas para Monto a Pagar y Medio de Pago
     col1, col2 = st.columns(2)  # Dos columnas de igual ancho
 
     with col1:
         monto_pagar = st.number_input("Monto a Pagar", min_value=0.0, format="%.2f")
 
     with col2:
-        medio_pago = st.selectbox("Medio de ", ["Efectivo", "Yape", "Plin", "Transferencia"])
+        medio_pago = st.selectbox("Medio de Pago", ["Efectivo", "Yape", "Plin", "Transferencia"])
     
     # Campo para seleccionar la fecha de registro
     fecha_registro = st.date_input("Fecha de Registro")
@@ -188,8 +188,12 @@ if menu == "Ingresar Boleta":
         # Si es entrega en sucursal, mostrar un desplegable para elegir la sucursal
         cursor.execute('SELECT id, nombre FROM sucursales')
         sucursales = cursor.fetchall()
-        sucursal_id = st.selectbox("Seleccione la sucursal", [s[0] for s in sucursales], format_func=lambda x: [s[1] for s in sucursales if s[0] == x][0])
-        direccion = None  # No se necesita dirección para entrega en sucursal
+        if sucursales:
+            sucursal_id = st.selectbox("Seleccione la sucursal", [s[0] for s in sucursales], format_func=lambda x: [s[1] for s in sucursales if s[0] == x][0])
+            direccion = None  # No se necesita dirección para entrega en sucursal
+        else:
+            st.warning("No hay sucursales registradas.")
+            sucursal_id = None
     elif tipo_entrega == "Delivery":
         # Si es delivery, no se pide la dirección
         sucursal_id = None  # No se necesita sucursal para delivery
@@ -197,7 +201,50 @@ if menu == "Ingresar Boleta":
 
     # Botón para guardar la boleta
     if st.button("Guardar Boleta"):
-        if numero_boleta and nombre_cliente and dni_cliente and monto_pagar and medio_pago:
+        # Validaciones
+        errores = []
+
+        # Validar DNI
+        if not dni_cliente or len(dni_cliente.strip()) == 0:
+            errores.append("El DNI del cliente es obligatorio.")
+        elif not dni_cliente.isdigit() or len(dni_cliente) != 8:
+            errores.append("El DNI debe tener exactamente 8 dígitos y solo números.")
+
+        # Validar Número de Boleta
+        if not numero_boleta or len(numero_boleta.strip()) == 0:
+            errores.append("El número de boleta es obligatorio.")
+        elif not numero_boleta.isdigit():
+            errores.append("El número de boleta solo puede contener números.")
+        else:
+            # Verificar si el número de boleta ya existe en la misma sucursal o en delivery
+            if tipo_entrega == "Sucursal":
+                cursor.execute('''
+                    SELECT COUNT(*) FROM boletas
+                    WHERE numero_boleta = ? AND sucursal_id = ?
+                ''', (numero_boleta, sucursal_id))
+            elif tipo_entrega == "Delivery":
+                cursor.execute('''
+                    SELECT COUNT(*) FROM boletas
+                    WHERE numero_boleta = ? AND tipo_entrega = 'Delivery'
+                ''', (numero_boleta,))
+            
+            count = cursor.fetchone()[0]
+            if count > 0:
+                errores.append("El número de boleta ya existe para esta sucursal o delivery.")
+
+        # Validar campos obligatorios
+        if not nombre_cliente or len(nombre_cliente.strip()) == 0:
+            errores.append("El nombre del cliente es obligatorio.")
+        if not monto_pagar or monto_pagar <= 0:
+            errores.append("El monto a pagar debe ser mayor que 0.")
+        if not fecha_registro:
+            errores.append("La fecha de registro es obligatoria.")
+
+        # Mostrar errores o guardar los datos
+        if errores:
+            for error in errores:
+                st.error(error)
+        else:
             # Insertar los datos en la tabla boletas
             cursor.execute('''
                 INSERT INTO boletas (
@@ -206,8 +253,6 @@ if menu == "Ingresar Boleta":
             ''', (numero_boleta, nombre_cliente, dni_cliente, monto_pagar, medio_pago, tipo_entrega, sucursal_id, direccion, fecha_registro))
             conn.commit()
             st.success("Boleta guardada correctamente!")
-        else:
-            st.error("Por favor, complete todos los campos.")
 
 elif menu == "Ingresar Sucursal":
     st.header("Ingresar Nueva Sucursal")
