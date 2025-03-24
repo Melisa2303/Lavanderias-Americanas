@@ -31,29 +31,21 @@ import streamlit as st
 # Cargar variables de entorno
 load_dotenv()
 
+# app.py - Conexión directa (SOLO PARA PRUEBAS)
+import psycopg2
+
 def conectar_db():
-    """Función de conexión mejorada con manejo de errores"""
     try:
-        conn = psycopg2.connect(
-            host=os.getenv("DB_HOST"),
-            dbname=os.getenv("DB_NAME"),
-            user=os.getenv("DB_USER"),
-            password=os.getenv("DB_PASSWORD"),
-            port=os.getenv("DB_PORT"),
+        return psycopg2.connect(
+            host="db.TU_ID_SUPABASE.supabase.co",  # Reemplaza con tu host real
+            dbname="postgres",
+            user="postgres",
+            password="TU_CONTRASEÑA",  # Contraseña directa aquí
+            port="5432",
             sslmode="require"
         )
-        
-        # Test de conexión
-        with conn.cursor() as cur:
-            cur.execute("SELECT 1")
-            if cur.fetchone()[0] != 1:
-                raise ValueError("Test de conexión fallido")
-                
-        return conn
-        
     except Exception as e:
-        st.error("🔴 Error crítico de conexión")
-        st.error(f"Detalle: {str(e).split('.')[0]}")
+        print(f"Error de conexión: {e}")
         return None
 
 # Función para obtener coordenadas de una dirección
@@ -204,23 +196,18 @@ def inicializar_tablas():
 # inicializar_tablas()
 
 # Función para verificar el inicio de sesión
+# Reemplaza tu función de verificar_login con:
 def verificar_login(usuario, contraseña):
-    conn = conectar_db()  # ← Asegúrate que esta función existe
-    if not conn:
-        return None
-        
-    try:
-        with conn.cursor() as cursor:
-            cursor.execute("""
-                SELECT perfil FROM usuarios 
-                WHERE usuario = %s AND contraseña = %s
-                """, (usuario, contraseña))
-            return cursor.fetchone()[0] if cursor.rowcount > 0 else None
-    except Exception as e:
-        st.error(f"Error de verificación: {str(e)}")
-        return None
-    finally:
-        conn.close()
+    # Usuarios de prueba directos en el código
+    usuarios = {
+        "admin": {"password": "admin123", "perfil": "Administrador"},
+        "chofer": {"password": "chofer123", "perfil": "Chofer"},
+        "sucursal": {"password": "sucursal123", "perfil": "Sucursal"}
+    }
+    
+    if usuario in usuarios and usuarios[usuario]["password"] == contraseña:
+        return usuarios[usuario]["perfil"]
+    return None
 
 # Pantalla de inicio de sesión
 def mostrar_login():
