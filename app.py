@@ -8,6 +8,7 @@ from ortools.constraint_solver import pywrapcp
 from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
 from datetime import timedelta
+import datetime
 import openrouteservice as ors
 
 # Configura la API key de OpenRouteService
