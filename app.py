@@ -149,7 +149,6 @@ cursor.execute('''
         medio_pago TEXT NOT NULL,
         tipo_entrega TEXT NOT NULL,
         sucursal_id INTEGER,
-        direccion TEXT,
         fecha_registro DATE  -- Nueva columna para la fecha de registro
     )
 ''')
@@ -169,14 +168,14 @@ if menu == "Ingresar Boleta":
     nombre_cliente = st.text_input("Nombre del Cliente")
     dni_cliente = st.text_input("DNI del Cliente")
 
-    # Crear dos columnas para Monto a Pagar y Medio de Pago
+    # Crear dos columnas para Monto a Pagar y Medio de 
     col1, col2 = st.columns(2)  # Dos columnas de igual ancho
 
     with col1:
         monto_pagar = st.number_input("Monto a Pagar", min_value=0.0, format="%.2f")
 
     with col2:
-        medio_pago = st.selectbox("Medio de Pago", ["Efectivo", "Yape", "Plin", "Transferencia"])
+        medio_pago = st.selectbox("Medio de ", ["Efectivo", "Yape", "Plin", "Transferencia"])
     
     # Campo para seleccionar la fecha de registro
     fecha_registro = st.date_input("Fecha de Registro")
@@ -369,7 +368,6 @@ elif menu == "Datos de Boletas Registradas":
             b.tipo_entrega, 
             s.nombre AS sucursal, 
             b.direccion,
-            b.articulos_lavados,
             b.fecha_registro
         FROM boletas b
         LEFT JOIN sucursales s ON b.sucursal_id = s.id
@@ -399,9 +397,26 @@ elif menu == "Datos de Boletas Registradas":
         st.subheader("Boletas Registradas")
         df = pd.DataFrame(boletas_filtradas, columns=[
             "Número de Boleta", "Nombre del Cliente", "DNI", "Monto a Pagar", 
-            "Medio de Pago", "Tipo de Entrega", "Sucursal", "Dirección", "Artículos Lavados", "Fecha de Registro"
+            "Medio de Pago", "Tipo de Entrega", "Sucursal", "Dirección", "Fecha de Registro"
         ])
         st.dataframe(df)
+
+        # Botón para exportar a Excel
+        if st.button("Exportar a Excel"):
+            # Crear un archivo Excel
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                df.to_excel(writer, index=False, sheet_name='Boletas')
+            output.seek(0)
+
+            # Descargar el archivo
+            st.download_button(
+                label="Descargar archivo Excel",
+                data=output,
+                file_name="boletas_registradas.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
+            st.success("Archivo Excel generado correctamente.")
     else:
         st.info("No hay boletas registradas que coincidan con los filtros seleccionados.")
         
@@ -450,10 +465,12 @@ elif menu == "Ver Ruta Optimizada":
         ubicaciones = recogidas + entregas
 
         # Calcular la matriz de distancias
-        matriz_distancias = calcular_matriz_distancias(ubicaciones)
+        with st.spinner("Calculando matriz de distancias..."):
+            matriz_distancias = calcular_matriz_distancias(ubicaciones)
 
         # Optimizar la ruta
-        ruta_optimizada = optimizar_ruta(matriz_distancias)
+        with st.spinner("Optimizando ruta..."):
+            ruta_optimizada = optimizar_ruta(matriz_distancias)
 
         if ruta_optimizada:
             st.write("Ruta optimizada:")
@@ -464,7 +481,8 @@ elif menu == "Ver Ruta Optimizada":
             coordenadas_ruta = [[ubicaciones[idx][2], ubicaciones[idx][1]] for idx in ruta_optimizada]
 
             # Obtener la ruta real usando OpenRouteService
-            ruta_real = obtener_ruta_real(coordenadas_ruta, ors_api_key)
+            with st.spinner("Calculando ruta real..."):
+                ruta_real = obtener_ruta_real(coordenadas_ruta, ors_api_key)
 
             if ruta_real:
                 # Crear un mapa con Folium
