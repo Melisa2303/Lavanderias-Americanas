@@ -235,29 +235,40 @@ elif menu == "Solicitar Recogida":
         st.subheader("Registrar Recogida de Sucursal")
         cursor.execute('SELECT id, nombre FROM sucursales')
         sucursales = cursor.fetchall()
-        sucursal_id = st.selectbox("Seleccione la sucursal", [s[0] for s in sucursales], format_func=lambda x: [s[1] for s in sucursales if s[0] == x][0])
-        fecha_recogida = st.date_input("Fecha de Recogida")
         
-        if st.button("Solicitar Recogida"):
-            # Registrar la recogida en la tabla recogidas
-            cursor.execute('''
-                INSERT INTO recogidas (sucursal_id, fecha)
-                VALUES (?, ?)
-            ''', (sucursal_id, fecha_recogida))
-            conn.commit()
+        if sucursales:
+            sucursal_id = st.selectbox("Seleccione la sucursal", [s[0] for s in sucursales], format_func=lambda x: [s[1] for s in sucursales if s[0] == x][0])
+            fecha_recogida = st.date_input("Fecha de Recogida")
+            
+            if st.button("Solicitar Recogida"):
+                # Validar que se haya seleccionado una sucursal
+                if not sucursal_id:
+                    st.error("Debe seleccionar una sucursal.")
+                # Validar que la fecha no sea en el pasado
+                elif fecha_recogida < datetime.date.today():
+                    st.error("La fecha de recogida no puede ser en el pasado.")
+                else:
+                    # Registrar la recogida en la tabla recogidas
+                    cursor.execute('''
+                        INSERT INTO recogidas (sucursal_id, fecha)
+                        VALUES (?, ?)
+                    ''', (sucursal_id, fecha_recogida))
+                    conn.commit()
 
-            # Programar la entrega dos días después
-            fecha_entrega = fecha_recogida + timedelta(days=3)
-            cursor.execute('''
-                INSERT INTO entregas (tipo, sucursal_id, fecha_entrega)
-                VALUES (?, ?, ?)
-            ''', ("sucursal", sucursal_id, fecha_entrega))
-            conn.commit()
+                    # Programar la entrega dos días después
+                    fecha_entrega = fecha_recogida + datetime.timedelta(days=3)
+                    cursor.execute('''
+                        INSERT INTO entregas (tipo, sucursal_id, fecha_entrega)
+                        VALUES (?, ?, ?)
+                    ''', ("sucursal", sucursal_id, fecha_entrega))
+                    conn.commit()
 
-            st.success(f"Recogida en sucursal solicitada correctamente. La entrega ha sido agendada para el {fecha_entrega}.")
+                    st.success(f"Recogida en sucursal solicitada correctamente. La entrega ha sido agendada para el {fecha_entrega}.")
+        else:
+            st.warning("No hay sucursales registradas.")
 
     elif tipo_recogida == "Cliente Delivery":
-        # Opción de recogida a domicilio (nueva)
+        # Opción de recogida a domicilio
         st.subheader("Registrar Cliente para Recogida a Domicilio")
         nombre_cliente = st.text_input("Nombre del Cliente")
         telefono_cliente = st.text_input("Teléfono del Cliente")
@@ -265,7 +276,34 @@ elif menu == "Solicitar Recogida":
         fecha_recogida = st.date_input("Fecha de Recogida")
         
         if st.button("Registrar Cliente para Recogida"):
-            if nombre_cliente and telefono_cliente and direccion_cliente:
+            # Validaciones
+            errores = []
+
+            # Validar nombre del cliente
+            if not nombre_cliente or len(nombre_cliente.strip()) == 0:
+                errores.append("El nombre del cliente es obligatorio.")
+            elif not nombre_cliente.replace(" ", "").isalpha():
+                errores.append("El nombre del cliente solo puede contener letras.")
+
+            # Validar teléfono del cliente
+            if not telefono_cliente or len(telefono_cliente.strip()) == 0:
+                errores.append("El teléfono del cliente es obligatorio.")
+            elif not telefono_cliente.isdigit() or len(telefono_cliente) != 9:
+                errores.append("El teléfono debe tener exactamente 9 dígitos y solo números.")
+
+            # Validar dirección del cliente
+            if not direccion_cliente or len(direccion_cliente.strip()) == 0:
+                errores.append("La dirección del cliente es obligatoria.")
+
+            # Validar fecha de recogida
+            if fecha_recogida < datetime.date.today():
+                errores.append("La fecha de recogida no puede ser en el pasado.")
+
+            # Mostrar errores o guardar los datos
+            if errores:
+                for error in errores:
+                    st.error(error)
+            else:
                 # Registrar el cliente en la tabla clientes_delivery
                 cursor.execute('''
                     INSERT INTO clientes_delivery (nombre, telefono, direccion, fecha_recogida)
@@ -275,7 +313,7 @@ elif menu == "Solicitar Recogida":
                 conn.commit()
 
                 # Programar la entrega dos días después
-                fecha_entrega = fecha_recogida + timedelta(days=3)
+                fecha_entrega = fecha_recogida + datetime.timedelta(days=3)
                 cursor.execute('''
                     INSERT INTO entregas (tipo, cliente_id, fecha_entrega)
                     VALUES (?, ?, ?)
@@ -283,8 +321,6 @@ elif menu == "Solicitar Recogida":
                 conn.commit()
 
                 st.success(f"Cliente registrado para recogida a domicilio correctamente. La entrega ha sido agendada para el {fecha_entrega}.")
-            else:
-                st.error("Por favor, complete todos los campos.")
 
 elif menu == "Datos Clientes de Delivery":
     st.header("Datos Clientes de Delivery")
