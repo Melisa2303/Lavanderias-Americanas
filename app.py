@@ -240,7 +240,7 @@ st.title("Optimización de Rutas para Lavandería")
     menu = mostrar_menu()
 
     # Aquí va el código de las pestañas (Ingresar Boleta, Ingresar Sucursal, etc.)
-  if menu == "Ingresar Boleta":
+    if menu == "Ingresar Boleta":
     st.header("Ingresar Boleta")
     
     # Campos para ingresar los datos de la boleta
