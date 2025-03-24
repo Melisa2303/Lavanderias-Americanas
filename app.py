@@ -92,6 +92,17 @@ def obtener_ruta_real(coordenadas, api_key):
 conn = sqlite3.connect('lavanderia.db')
 cursor = conn.cursor()
 
+# Crear tabla de usuarios si no existe
+cursor.execute('''
+    CREATE TABLE IF NOT EXISTS usuarios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        usuario TEXT UNIQUE NOT NULL,
+        contraseña TEXT NOT NULL,
+        perfil TEXT NOT NULL
+    )
+''')
+conn.commit()
+
 # Crear tablas si no existen
 cursor.execute('''
     CREATE TABLE IF NOT EXISTS sucursales (
@@ -155,13 +166,92 @@ cursor.execute('''
 ''')
 conn.commit()
 
+# Insertar usuarios de prueba (solo la primera vez)
+try:
+    cursor.execute('''
+        INSERT INTO usuarios (usuario, contraseña, perfil)
+        VALUES (?, ?, ?)
+    ''', ("admin", "admin123", "Administrador"))
+    cursor.execute('''
+        INSERT INTO usuarios (usuario, contraseña, perfil)
+        VALUES (?, ?, ?)
+    ''', ("chofer", "chofer123", "Chofer"))
+    cursor.execute('''
+        INSERT INTO usuarios (usuario, contraseña, perfil)
+        VALUES (?, ?, ?)
+    ''', ("sucursal", "sucursal123", "Sucursal"))
+    conn.commit()
+except sqlite3.IntegrityError:
+    pass  # Los usuarios ya existen
+
+# Función para verificar el inicio de sesión
+def verificar_login(usuario, contraseña):
+    cursor.execute('''
+        SELECT perfil FROM usuarios
+        WHERE usuario = ? AND contraseña = ?
+    ''', (usuario, contraseña))
+    resultado = cursor.fetchone()
+    if resultado:
+        return resultado[0]  # Devuelve el perfil del usuario
+    return None
+
+# Pantalla de inicio de sesión
+def mostrar_login():
+    st.title("Inicio de Sesión")
+    usuario = st.text_input("Usuario")
+    contraseña = st.text_input("Contraseña", type="password")
+    if st.button("Ingresar"):
+        perfil = verificar_login(usuario, contraseña)
+        if perfil:
+            st.session_state['perfil'] = perfil
+            st.session_state['usuario'] = usuario
+            st.success(f"Bienvenido, {usuario} ({perfil})")
+        else:
+            st.error("Usuario o contraseña incorrectos")
+
+# Función para mostrar el menú según el perfil
+def mostrar_menu():
+    if st.session_state['perfil'] == "Administrador":
+        menu = st.sidebar.selectbox("Menú", [
+            "Ingresar Boleta", "Ingresar Sucursal", "Solicitar Recogida",
+            "Datos de Recojos", "Datos de Boletas Registradas", "Ver Ruta Optimizada"
+        ])
+    elif st.session_state['perfil'] == "Chofer":
+        menu = st.sidebar.selectbox("Menú", [
+            "Ver Ruta Optimizada", "Datos de Recojos"
+        ])
+    elif st.session_state['perfil'] == "Sucursal":
+        menu = st.sidebar.selectbox("Menú", [
+            "Solicitar Recogida"
+        ])
+    return menu
+
+# Verificar si el usuario está logueado
+if 'perfil' not in st.session_state:
+    mostrar_login()
+else:
+    # Mostrar el logo y el nombre de la lavandería
+    col1, col2 = st.columns([1, 4])  # Divide la cabecera en dos columnas
+
+    with col1:
+        # Mostrar el logo (asegúrate de que el archivo "logo.png" esté en la misma carpeta)
+        st.image("https://github.com/Melisa2303/Lavanderias-Americanas/blob/main/LOGO.PNG?raw=true", width=100)  # Ajusta el ancho según sea necesario
+
+    with col2:
+        # Mostrar el nombre de la lavandería
+        st.title("Lavanderías Americanas")
+
 # Título de la aplicación
 st.title("Optimización de Rutas para Lavandería")
 
 # Menú de opciones
-menu = st.sidebar.selectbox("Menú", ["Ingresar Boleta", "Ingresar Sucursal", "Solicitar Recogida", "Datos de Recojos", "Datos de Boletas Registradas", "Ver Ruta Optimizada"])
+# menu = st.sidebar.selectbox("Menú", ["Ingresar Boleta", "Ingresar Sucursal", "Solicitar Recogida", "Datos de Recojos", "Datos de Boletas Registradas", "Ver Ruta Optimizada"])
 
-if menu == "Ingresar Boleta":
+    # Mostrar el menú según el perfil
+    menu = mostrar_menu()
+
+    # Aquí va el código de las pestañas (Ingresar Boleta, Ingresar Sucursal, etc.)
+  if menu == "Ingresar Boleta":
     st.header("Ingresar Boleta")
     
     # Campos para ingresar los datos de la boleta
@@ -597,3 +687,9 @@ elif menu == "Ver Ruta Optimizada":
                 st.error("No se pudo calcular la ruta real.")
         else:
             st.error("No se pudo optimizar la ruta.")
+
+# Botón para cerrar sesión
+    if st.sidebar.button("Cerrar Sesión"):
+        del st.session_state['perfil']
+        del st.session_state['usuario']
+        st.experimental_rerun()  # Recargar la página para mostrar el login
