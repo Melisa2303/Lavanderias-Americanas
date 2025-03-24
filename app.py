@@ -14,17 +14,6 @@ import openrouteservice as ors
 # Configura la API key de OpenRouteService
 ors_api_key = "5b3ce3597851110001cf62486bc22aa6557847f3a94a99f41f14ec16"  # Reemplaza con tu API key
 
-# Mostrar el logo y el nombre de la lavandería
-col1, col2 = st.columns([1, 4])  # Divide la cabecera en dos columnas
-
-with col1:
-    # Mostrar el logo (asegúrate de que el archivo "logo.png" esté en la misma carpeta)
-    st.image("https://github.com/Melisa2303/Lavanderias-Americanas/blob/main/LOGO.PNG?raw=true", width=100)  # Ajusta el ancho según sea necesario
-
-with col2:
-    # Mostrar el nombre de la lavandería
-    st.title("Lavanderías Americanas") 
-
 # Función para obtener coordenadas de una dirección
 def obtener_coordenadas(direccion):
     geolocator = Nominatim(user_agent="lavanderia_app")
