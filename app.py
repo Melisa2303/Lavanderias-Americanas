@@ -253,8 +253,8 @@ def mostrar_menu():
 # ------------ INICIO DE LA APLICACIÓN ------------
 
 # Verificar si el usuario está logueado
-if 'logged_in' not in st.session_state:
-    mostrar_login()
+if 'logged_in' not in st.session_state or not st.session_state.logged_in:
+    mostrar_login() 
 else:
     # Cabecera
     col1, col2 = st.columns([1, 4])
@@ -570,13 +570,9 @@ else:
                     conn.close()
 
 # -------------------- BOTÓN CERRAR SESIÓN --------------------
-if st.sidebar.button("Cerrar Sesión"):
-    # 1. Elimina TODOS los datos de la sesión actual
-    st.session_state.clear()  # Limpieza completa
-    
-    # 2. Fuerza un reinicio completo de la app (redirige al login)
-    st.rerun()  # Versión estable (no experimental)
-    
-    # 3. Detiene cualquier ejecución adicional (evita errores)
-    st.stop()  # ¡IMPORTANTE!
+ if 'logged_in' in st.session_state and st.session_state.logged_in:
+ if st.sidebar.button("Cerrar Sesión"):
+    st.session_state.clear()  # Limpia la sesión
+    st.rerun()               # Vuelve al login
+    st.stop()                # Evita errores
         
