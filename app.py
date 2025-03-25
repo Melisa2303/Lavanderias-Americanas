@@ -569,20 +569,14 @@ else:
                     cursor.close()
                     conn.close()
 
-    # -------------------- BOTÓN CERRAR SESIÓN --------------------
-    # Función mejorada para cerrar sesión
-def cerrar_sesion():
-    # Limpiar todos los estados de sesión
-    st.session_state.clear()
-    # Forzar recarga de la página para volver al login
-    st.rerun()
-
-# Modificación en la lógica principal (en la parte del cierre de sesión)
-if st.sidebar.button("Cerrar Sesión", key="cerrar_sesion"):
-    # Mostrar mensaje de confirmación
-    st.sidebar.info("Cerrando sesión...")
-    # Usar un pequeño retraso para evitar el error
-    st.session_state['cerrando_sesion'] = True
-    # Programar el cierre real después de un pequeño retraso
-    st.experimental_rerun()
+# -------------------- BOTÓN CERRAR SESIÓN --------------------
+if st.sidebar.button("Cerrar Sesión"):
+    # 1. Elimina TODOS los datos de la sesión actual
+    st.session_state.clear()  # Limpieza completa
+    
+    # 2. Fuerza un reinicio completo de la app (redirige al login)
+    st.rerun()  # Versión estable (no experimental)
+    
+    # 3. Detiene cualquier ejecución adicional (evita errores)
+    st.stop()  # ¡IMPORTANTE!
         
