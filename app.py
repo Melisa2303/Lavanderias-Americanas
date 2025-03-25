@@ -201,8 +201,12 @@ def verificar_login(usuario, contraseña):
 
 # Pantalla de inicio de sesión
 def mostrar_login():
-    st.title("Lavanderías Americanas")
-    st.image("https://github.com/Melisa2303/Lavanderias-Americanas/blob/main/LOGO.PNG?raw=true", width=100)
+    # Mostrar logo y nombre de la empresa
+    col1, col2 = st.columns([1, 4])
+    with col1:
+        st.image("https://github.com/Melisa2303/Lavanderias-Americanas/blob/main/LOGO.PNG?raw=true", width=100)
+    with col2:
+        st.title("Lavanderías Americanas")
     
     with st.form("login_form"):
         usuario = st.text_input("Usuario")
