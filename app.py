@@ -267,7 +267,7 @@ else:
 
     # -------------------- SECCIÓN INGRESAR BOLETA --------------------
     if menu == "Ingresar Boleta":
-       st.header("📄 Ingresar Boleta")
+        st.header("📄 Ingresar Boleta")
     
     with st.form("form_boleta"):
         # Campos del formulario
@@ -369,9 +369,10 @@ else:
             else:
                 for error in errores:
                     st.error(error)
+    
     # -------------------- SECCIÓN INGRESAR SUCURSAL --------------------
-    elif menu == "Ingresar Sucursal":
-        st.header("🏪 Ingresar Sucursal")
+        elif menu == "Ingresar Sucursal":
+            st.header("🏪 Ingresar Sucursal")
         
         nombre = st.text_input("Nombre de la Sucursal")
         direccion = st.text_input("Dirección Completa")
