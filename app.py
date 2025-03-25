@@ -497,7 +497,7 @@ else:
 
     # -------------------- SECCIÓN DATOS DE RECOJOS --------------------
         elif menu == "Datos de Recojos":
-           st.header("📋 Datos de Recojos")
+            st.header("📋 Datos de Recojos")
         
         fecha = st.date_input("Filtrar por fecha")
         
@@ -531,8 +531,8 @@ else:
                 conn.close()
 
     # -------------------- SECCIÓN RUTA OPTIMIZADA --------------------
-    elif menu == "Ver Ruta Optimizada":
-        st.header("🗺️ Ruta Optimizada")
+        elif menu == "Ver Ruta Optimizada":
+            st.header("🗺️ Ruta Optimizada")
         
         fecha = st.date_input("Seleccionar fecha para ruta")
         
