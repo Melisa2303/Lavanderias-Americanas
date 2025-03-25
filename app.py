@@ -261,13 +261,6 @@ else:
     with col2:
         st.title("Lavanderías Americanas")
     
-    # Mostrar mensaje de bienvenida solo una vez
-    if st.session_state.get('mostrar_bienvenida', False):
-        st.success(f"Bienvenido, {st.session_state['usuario']} ({st.session_state['perfil']})")
-        # Usamos un placeholder para que el mensaje desaparezca al cambiar de pestaña
-        placeholder = st.empty()
-        st.session_state['mostrar_bienvenida'] = False
-    
     menu = mostrar_menu()
 
     # -------------------- SECCIÓN INGRESAR BOLETA --------------------
