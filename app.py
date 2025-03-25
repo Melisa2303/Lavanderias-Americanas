@@ -200,10 +200,9 @@ def verificar_login(usuario, contraseña):
     return None
 
 # Pantalla de inicio de sesión
-# Función de login modificada
 def mostrar_login():
     st.title("Lavanderías Americanas")
-    st.image("logo.png", width=100)
+    st.image(""https://github.com/Melisa2303/Lavanderias-Americanas/blob/main/LOGO.PNG?raw=true"", width=100)
     
     with st.form("login_form"):
         usuario = st.text_input("Usuario")
