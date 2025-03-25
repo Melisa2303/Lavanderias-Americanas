@@ -281,44 +281,44 @@ else:
                 medio_pago = st.selectbox("Medio de Pago", ["Efectivo", "Yape", "Plin", "Transferencia"])
     
             fecha_registro = st.date_input("Fecha de Registro", datetime.date.today())
-            tipo_entrega = st.radio("Tipo de Entrega", ("Sucursal", "Delivery"))
+            tipo_entrega = st.radio("Tipo de Entrega", ("Sucursal", "Delivery"), key="tipo_entrega")
     
             sucursal_id = None
             if tipo_entrega == "Sucursal":
-                # Contenedor para el selector de sucursales
-                sucursal_container = st.container()
-                
-                with sucursal_container:
+                # 1. Renderizar el selectbox vacío inmediatamente
+                placeholder = st.empty()
+                selectbox_placeholder = placeholder.selectbox(
+                    "Seleccione sucursal", 
+                    options=["Cargando..."], 
+                    disabled=True
+                )
+            
+                # 2. Cargar datos de BD
+                try:
                     conn = conectar_db()
                     if conn:
-                        try:
-                            cursor = conn.cursor()
-                            cursor.execute('SELECT id, nombre FROM sucursales ORDER BY nombre')
-                            sucursales = cursor.fetchall()
-            
-                            if sucursales:
-                                sucursal_seleccionada = st.selectbox(
-                                    "Seleccione sucursal",
-                                    options=sucursales,
-                                    format_func=lambda x: x[1]
-                                )
-                                sucursal_id = sucursal_seleccionada[0]
-                            else:
-                                st.warning("No hay sucursales registradas. Por favor agregue sucursales primero.")
-                                sucursal_id = None
-                
-                        except Exception as e:
-                            st.error(f"Error al cargar sucursales: {str(e)}")
-                            sucursal_id = None
-                        finally:
-                            if 'cursor' in locals():
-                                cursor.close()
-                            conn.close()
+                        cursor = conn.cursor()
+                        cursor.execute('SELECT id, nombre FROM sucursales ORDER BY nombre')
+                        sucursales = cursor.fetchall()
+                    
+                        if sucursales:
+                            # 3. Reemplazar el selectbox con datos reales
+                            sucursal_seleccionada = placeholder.selectbox(
+                                "Seleccione sucursal",
+                                options=sucursales,
+                                format_func=lambda x: x[1]
+                            )
+                            sucursal_id = sucursal_seleccionada[0]
+                        else:
+                            placeholder.warning("No hay sucursales registradas")
                     else:
-                        st.error("No se pudo conectar a la base de datos")
-                        sucursal_id = None
-            else:  # Si es Delivery
-                sucursal_id = None  # Aseguramos que no quede valor previo
+                        placeholder.error("Error de conexión a BD")
+                    
+                except Exception as e:
+                    placeholder.error(f"Error: {str(e)}")
+                finally:
+                    if 'cursor' in locals(): cursor.close()
+                    if 'conn' in locals(): conn.close()
     
             submitted = st.form_submit_button("Guardar Boleta")
     
