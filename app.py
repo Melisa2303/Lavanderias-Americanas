@@ -202,7 +202,7 @@ def verificar_login(usuario, contraseña):
 # Pantalla de inicio de sesión
 def mostrar_login():
     st.title("Lavanderías Americanas")
-    st.image(""https://github.com/Melisa2303/Lavanderias-Americanas/blob/main/LOGO.PNG?raw=true"", width=100)
+    st.image("https://github.com/Melisa2303/Lavanderias-Americanas/blob/main/LOGO.PNG?raw=true", width=100)
     
     with st.form("login_form"):
         usuario = st.text_input("Usuario")
