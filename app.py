@@ -267,7 +267,7 @@ else:
 
     # -------------------- SECCIÓN INGRESAR BOLETA --------------------
     if menu == "Ingresar Boleta":
-    st.header("📄 Ingresar Boleta")
+       st.header("📄 Ingresar Boleta")
     
     with st.form("form_boleta"):
         # Campos del formulario
