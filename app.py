@@ -318,7 +318,7 @@ else:
                     if 'conn' in locals(): conn.close()
 
             # 4. Botón de submit (ESTA ES LA CLAVE PARA SOLUCIONAR EL ERROR)
-            submitted = form.form_submit_button("💾 Guardar Boleta")
+            submitted = st.form_submit_button("💾 Guardar Boleta")
         
             # 5. Validaciones al enviar
             if submitted:
