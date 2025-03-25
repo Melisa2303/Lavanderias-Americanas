@@ -570,9 +570,9 @@ else:
                     conn.close()
 
 # -------------------- BOTÓN CERRAR SESIÓN --------------------
- if 'logged_in' in st.session_state and st.session_state.logged_in:
- if st.sidebar.button("Cerrar Sesión"):
-    st.session_state.clear()  # Limpia la sesión
-    st.rerun()               # Vuelve al login
-    st.stop()                # Evita errores
+if 'logged_in' in st.session_state and st.session_state.logged_in:
+    if st.sidebar.button("Cerrar Sesión"):
+        st.session_state.clear()
+        st.rerun()
+        st.stop()
         
