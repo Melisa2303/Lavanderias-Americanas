@@ -399,9 +399,9 @@ else:
             except Exception as e:
                 st.error(f"Error: {e}")
 
-    # -------------------- SECCIÓN SOLICITAR RECOGIDA --------------------
-    elif menu == "Solicitar Recogida":
-        st.header("🚚 Solicitar Recogida")
+    # -------------------- SECCIÓN SOLICITAR RECOGIDA -------------------
+        elif menu == "Solicitar Recogida":
+            st.header("🚚 Solicitar Recogida")
         
         tipo_recogida = st.radio("Tipo de Recogida", ["Sucursal", "Cliente Delivery"])
 
@@ -496,8 +496,8 @@ else:
                         st.error(error)
 
     # -------------------- SECCIÓN DATOS DE RECOJOS --------------------
-    elif menu == "Datos de Recojos":
-        st.header("📋 Datos de Recojos")
+        elif menu == "Datos de Recojos":
+           st.header("📋 Datos de Recojos")
         
         fecha = st.date_input("Filtrar por fecha")
         
