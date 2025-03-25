@@ -266,22 +266,25 @@ else:
     menu = mostrar_menu()
 
     # -------------------- SECCIÓN INGRESAR BOLETA --------------------
-    if menu == "Ingresar Boleta":
-        st.header("📄 Ingresar Boleta")
+if menu == "Ingresar Boleta":
+    st.header("📄 Ingresar Boleta")
+    
+    with st.form("form_boleta"):
+        # Campos del formulario
+        numero_boleta = st.text_input("Número de Boleta (solo números)", max_chars=10)
+        nombre_cliente = st.text_input("Nombre del Cliente (solo letras)", max_chars=100)
+        dni_cliente = st.text_input("DNI del Cliente (8 dígitos)", max_chars=8)
         
-        numero_boleta = st.text_input("Número de Boleta")
-        nombre_cliente = st.text_input("Nombre del Cliente")
-        dni_cliente = st.text_input("DNI del Cliente")
-
         col1, col2 = st.columns(2)
         with col1:
-            monto_pagar = st.number_input("Monto a Pagar", min_value=0.0, format="%.2f")
+            monto_pagar = st.number_input("Monto a Pagar", min_value=0.0, format="%.2f", step=0.01)
         with col2:
             medio_pago = st.selectbox("Medio de Pago", ["Efectivo", "Yape", "Plin", "Transferencia"])
         
-        fecha_registro = st.date_input("Fecha de Registro")
+        fecha_registro = st.date_input("Fecha de Registro", datetime.date.today())
         tipo_entrega = st.radio("Tipo de Entrega", ("Sucursal", "Delivery"))
-
+        
+        sucursal_id = None
         if tipo_entrega == "Sucursal":
             conn = conectar_db()
             if conn:
@@ -295,20 +298,50 @@ else:
                                                  format_func=lambda x: [s[1] for s in sucursales if s[0] == x][0])
                     else:
                         st.warning("No hay sucursales registradas.")
-                        sucursal_id = None
                 finally:
                     cursor.close()
                     conn.close()
-        else:
-            sucursal_id = None
-
-        if st.button("Guardar Boleta"):
+        
+        submitted = st.form_submit_button("Guardar Boleta")
+        
+        if submitted:
             # Validaciones
             errores = []
-            if not dni_cliente or not dni_cliente.isdigit() or len(dni_cliente) != 8:
-                errores.append("DNI debe tener 8 dígitos")
+            
+            # Validar número de boleta (solo números y único)
             if not numero_boleta or not numero_boleta.isdigit():
-                errores.append("Número de boleta inválido")
+                errores.append("❌ Número de boleta debe contener solo números")
+            else:
+                conn = conectar_db()
+                if conn:
+                    try:
+                        cursor = conn.cursor()
+                        cursor.execute('''
+                            SELECT COUNT(*) FROM boletas 
+                            WHERE numero_boleta = %s AND tipo_entrega = %s
+                            AND (%s IS NOT NULL AND sucursal_id = %s OR %s IS NULL)
+                        ''', (numero_boleta, tipo_entrega, sucursal_id, sucursal_id, sucursal_id))
+                        if cursor.fetchone()[0] > 0:
+                            errores.append("❌ Ya existe una boleta con este número para el mismo tipo de entrega")
+                    finally:
+                        cursor.close()
+                        conn.close()
+            
+            # Validar nombre (solo letras y espacios)
+            if not nombre_cliente or not all(c.isalpha() or c.isspace() for c in nombre_cliente):
+                errores.append("❌ Nombre debe contener solo letras y espacios")
+            
+            # Validar DNI (8 dígitos)
+            if not dni_cliente or not dni_cliente.isdigit() or len(dni_cliente) != 8:
+                errores.append("❌ DNI debe tener exactamente 8 dígitos")
+            
+            # Validar monto
+            if monto_pagar <= 0:
+                errores.append("❌ Monto debe ser mayor que 0")
+            
+            # Validar sucursal si es necesario
+            if tipo_entrega == "Sucursal" and not sucursal_id:
+                errores.append("❌ Debe seleccionar una sucursal")
             
             if not errores:
                 conn = conectar_db()
@@ -322,14 +355,14 @@ else:
                                 sucursal_id, fecha_registro
                             ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                         ''', (
-                            numero_boleta, nombre_cliente, dni_cliente,
+                            numero_boleta, nombre_cliente.strip(), dni_cliente,
                             monto_pagar, medio_pago, tipo_entrega,
                             sucursal_id, fecha_registro
                         ))
                         conn.commit()
-                        st.success("✅ Boleta guardada")
+                        st.success("✅ Boleta guardada correctamente")
                     except Exception as e:
-                        st.error(f"Error: {e}")
+                        st.error(f"❌ Error al guardar boleta: {e}")
                     finally:
                         cursor.close()
                         conn.close()
