@@ -265,9 +265,9 @@ else:
     
     menu = mostrar_menu()
 
-    # -------------------- SECCIÓN INGRESAR BOLETA --------------------
-    if menu == "Ingresar Boleta":
-        st.header("📄 Ingresar Boleta")
+# -------------------- SECCIÓN INGRESAR BOLETA --------------------
+if menu == "Ingresar Boleta":
+    st.header("📄 Ingresar Boleta")
     
     with st.form("form_boleta"):
         # Campos del formulario
@@ -369,239 +369,239 @@ else:
             else:
                 for error in errores:
                     st.error(error)
+
+# -------------------- SECCIÓN INGRESAR SUCURSAL --------------------
+elif menu == "Ingresar Sucursal":
+    st.header("🏪 Ingresar Sucursal")
     
-    # -------------------- SECCIÓN INGRESAR SUCURSAL --------------------
-        elif menu == "Ingresar Sucursal":
-            st.header("🏪 Ingresar Sucursal")
-        
-        nombre = st.text_input("Nombre de la Sucursal")
-        direccion = st.text_input("Dirección Completa")
+    nombre = st.text_input("Nombre de la Sucursal")
+    direccion = st.text_input("Dirección Completa")
 
-        if st.button("Guardar Sucursal"):
+    if st.button("Guardar Sucursal"):
+        try:
+            lat, lon = obtener_coordenadas(direccion)
+            if lat and lon:
+                conn = conectar_db()
+                if conn:
+                    try:
+                        cursor = conn.cursor()
+                        cursor.execute('''
+                            INSERT INTO sucursales (nombre, direccion, latitud, longitud)
+                            VALUES (%s, %s, %s, %s)
+                        ''', (nombre, direccion, lat, lon))
+                        conn.commit()
+                        st.success("✅ Sucursal registrada")
+                    finally:
+                        cursor.close()
+                        conn.close()
+            else:
+                st.error("No se pudo geocodificar la dirección")
+        except Exception as e:
+            st.error(f"Error: {e}")
+
+# -------------------- SECCIÓN SOLICITAR RECOGIDA --------------------
+elif menu == "Solicitar Recogida":
+    st.header("🚚 Solicitar Recogida")
+    
+    tipo_recogida = st.radio("Tipo de Recogida", ["Sucursal", "Cliente Delivery"])
+
+    if tipo_recogida == "Sucursal":
+        conn = conectar_db()
+        if conn:
             try:
-                lat, lon = obtener_coordenadas(direccion)
-                if lat and lon:
-                    conn = conectar_db()
-                    if conn:
-                        try:
-                            cursor = conn.cursor()
-                            cursor.execute('''
-                                INSERT INTO sucursales (nombre, direccion, latitud, longitud)
-                                VALUES (%s, %s, %s, %s)
-                            ''', (nombre, direccion, lat, lon))
-                            conn.commit()
-                            st.success("✅ Sucursal registrada")
-                        finally:
-                            cursor.close()
-                            conn.close()
-                else:
-                    st.error("No se pudo geocodificar la dirección")
-            except Exception as e:
-                st.error(f"Error: {e}")
-
-    # -------------------- SECCIÓN SOLICITAR RECOGIDA -------------------
-        elif menu == "Solicitar Recogida":
-            st.header("🚚 Solicitar Recogida")
-        
-        tipo_recogida = st.radio("Tipo de Recogida", ["Sucursal", "Cliente Delivery"])
-
-        if tipo_recogida == "Sucursal":
-            conn = conectar_db()
-            if conn:
-                try:
-                    cursor = conn.cursor()
-                    cursor.execute('SELECT id, nombre FROM sucursales')
-                    sucursales = cursor.fetchall()
-                    
-                    if sucursales:
-                        sucursal_id = st.selectbox("Seleccione sucursal", 
-                                                 [s[0] for s in sucursales],
-                                                 format_func=lambda x: [s[1] for s in sucursales if s[0] == x][0])
-                        fecha = st.date_input("Fecha de Recogida")
-                        
-                        if st.button("Programar Recogida"):
-                            if fecha < datetime.date.today():
-                                st.error("La fecha no puede ser pasada")
-                            else:
-                                try:
-                                    # Registrar recogida
-                                    cursor.execute('''
-                                        INSERT INTO recogidas (sucursal_id, fecha)
-                                        VALUES (%s, %s)
-                                    ''', (sucursal_id, fecha))
-                                    
-                                    # Programar entrega (3 días después)
-                                    fecha_entrega = fecha + timedelta(days=3)
-                                    cursor.execute('''
-                                        INSERT INTO entregas (tipo, sucursal_id, fecha_entrega)
-                                        VALUES (%s, %s, %s)
-                                    ''', ("sucursal", sucursal_id, fecha_entrega))
-                                    
-                                    conn.commit()
-                                    st.success(f"✅ Recogida programada para el {fecha}")
-                                except Exception as e:
-                                    conn.rollback()
-                                    st.error(f"Error: {e}")
-                    else:
-                        st.warning("No hay sucursales registradas")
-                finally:
-                    cursor.close()
-                    conn.close()
-
-        else:  # Cliente Delivery
-            nombre = st.text_input("Nombre del Cliente")
-            telefono = st.text_input("Teléfono")
-            direccion = st.text_input("Dirección")
-            fecha = st.date_input("Fecha de Recogida")
-            
-            if st.button("Registrar Recogida"):
-                errores = []
-                if not nombre:
-                    errores.append("Nombre es obligatorio")
-                if not telefono.isdigit() or len(telefono) != 9:
-                    errores.append("Teléfono debe tener 9 dígitos")
-                if fecha < datetime.date.today():
-                    errores.append("Fecha no puede ser pasada")
+                cursor = conn.cursor()
+                cursor.execute('SELECT id, nombre FROM sucursales')
+                sucursales = cursor.fetchall()
                 
-                if not errores:
-                    conn = conectar_db()
-                    if conn:
-                        try:
-                            cursor = conn.cursor()
-                            # Registrar cliente
-                            cursor.execute('''
-                                INSERT INTO clientes_delivery (nombre, telefono, direccion, fecha_recogida)
-                                VALUES (%s, %s, %s, %s)
-                                RETURNING id
-                            ''', (nombre, telefono, direccion, fecha))
-                            cliente_id = cursor.fetchone()[0]
-                            
-                            # Programar entrega (3 días después)
-                            fecha_entrega = fecha + timedelta(days=3)
-                            cursor.execute('''
-                                INSERT INTO entregas (tipo, cliente_id, fecha_entrega)
-                                VALUES (%s, %s, %s)
-                            ''', ("delivery", cliente_id, fecha_entrega))
-                            
-                            conn.commit()
-                            st.success(f"✅ Recogida programada para el {fecha}")
-                        except Exception as e:
-                            conn.rollback()
-                            st.error(f"Error: {e}")
-                        finally:
-                            cursor.close()
-                            conn.close()
+                if sucursales:
+                    sucursal_id = st.selectbox("Seleccione sucursal", 
+                                             [s[0] for s in sucursales],
+                                             format_func=lambda x: [s[1] for s in sucursales if s[0] == x][0])
+                    fecha = st.date_input("Fecha de Recogida")
+                    
+                    if st.button("Programar Recogida"):
+                        if fecha < datetime.date.today():
+                            st.error("La fecha no puede ser pasada")
+                        else:
+                            try:
+                                # Registrar recogida
+                                cursor.execute('''
+                                    INSERT INTO recogidas (sucursal_id, fecha)
+                                    VALUES (%s, %s)
+                                ''', (sucursal_id, fecha))
+                                
+                                # Programar entrega (3 días después)
+                                fecha_entrega = fecha + timedelta(days=3)
+                                cursor.execute('''
+                                    INSERT INTO entregas (tipo, sucursal_id, fecha_entrega)
+                                    VALUES (%s, %s, %s)
+                                ''', ("sucursal", sucursal_id, fecha_entrega))
+                                
+                                conn.commit()
+                                st.success(f"✅ Recogida programada para el {fecha}")
+                            except Exception as e:
+                                conn.rollback()
+                                st.error(f"Error: {e}")
                 else:
-                    for error in errores:
-                        st.error(error)
+                    st.warning("No hay sucursales registradas")
+            finally:
+                cursor.close()
+                conn.close()
 
-    # -------------------- SECCIÓN DATOS DE RECOJOS --------------------
-        elif menu == "Datos de Recojos":
-            st.header("📋 Datos de Recojos")
+    else:  # Cliente Delivery
+        nombre = st.text_input("Nombre del Cliente")
+        telefono = st.text_input("Teléfono")
+        direccion = st.text_input("Dirección")
+        fecha = st.date_input("Fecha de Recogida")
         
-        fecha = st.date_input("Filtrar por fecha")
-        
+        if st.button("Registrar Recogida"):
+            errores = []
+            if not nombre:
+                errores.append("Nombre es obligatorio")
+            if not telefono.isdigit() or len(telefono) != 9:
+                errores.append("Teléfono debe tener 9 dígitos")
+            if fecha < datetime.date.today():
+                errores.append("Fecha no puede ser pasada")
+            
+            if not errores:
+                conn = conectar_db()
+                if conn:
+                    try:
+                        cursor = conn.cursor()
+                        # Registrar cliente
+                        cursor.execute('''
+                            INSERT INTO clientes_delivery (nombre, telefono, direccion, fecha_recogida)
+                            VALUES (%s, %s, %s, %s)
+                            RETURNING id
+                        ''', (nombre, telefono, direccion, fecha))
+                        cliente_id = cursor.fetchone()[0]
+                        
+                        # Programar entrega (3 días después)
+                        fecha_entrega = fecha + timedelta(days=3)
+                        cursor.execute('''
+                            INSERT INTO entregas (tipo, cliente_id, fecha_entrega)
+                            VALUES (%s, %s, %s)
+                        ''', ("delivery", cliente_id, fecha_entrega))
+                        
+                        conn.commit()
+                        st.success(f"✅ Recogida programada para el {fecha}")
+                    except Exception as e:
+                        conn.rollback()
+                        st.error(f"Error: {e}")
+                    finally:
+                        cursor.close()
+                        conn.close()
+            else:
+                for error in errores:
+                    st.error(error)
+
+# -------------------- SECCIÓN DATOS DE RECOJOS --------------------
+elif menu == "Datos de Recojos":
+    st.header("📋 Datos de Recojos")
+    
+    fecha = st.date_input("Filtrar por fecha")
+    
+    conn = conectar_db()
+    if conn:
+        try:
+            cursor = conn.cursor()
+            
+            # Recojos en sucursales
+            st.subheader("Recojos en Sucursales")
+            cursor.execute('''
+                SELECT s.nombre, s.direccion, r.fecha 
+                FROM recogidas r JOIN sucursales s ON r.sucursal_id = s.id
+                WHERE r.fecha = %s
+            ''', (fecha,))
+            df_sucursal = pd.DataFrame(cursor.fetchall(), columns=["Sucursal", "Dirección", "Fecha"])
+            st.dataframe(df_sucursal)
+            
+            # Recojos a domicilio
+            st.subheader("Recojos a Domicilio")
+            cursor.execute('''
+                SELECT nombre, telefono, direccion, fecha_recogida
+                FROM clientes_delivery
+                WHERE fecha_recogida = %s
+            ''', (fecha,))
+            df_domicilio = pd.DataFrame(cursor.fetchall(), columns=["Cliente", "Teléfono", "Dirección", "Fecha"])
+            st.dataframe(df_domicilio)
+            
+        finally:
+            cursor.close()
+            conn.close()
+
+# -------------------- SECCIÓN RUTA OPTIMIZADA --------------------
+elif menu == "Ver Ruta Optimizada":
+    st.header("🗺️ Ruta Optimizada")
+    
+    fecha = st.date_input("Seleccionar fecha para ruta")
+    
+    if st.button("Generar Ruta"):
         conn = conectar_db()
         if conn:
             try:
                 cursor = conn.cursor()
                 
-                # Recojos en sucursales
-                st.subheader("Recojos en Sucursales")
+                # Obtener ubicaciones (sucursales + clientes)
                 cursor.execute('''
-                    SELECT s.nombre, s.direccion, r.fecha 
-                    FROM recogidas r JOIN sucursales s ON r.sucursal_id = s.id
-                    WHERE r.fecha = %s
+                    SELECT 
+                        CASE 
+                            WHEN e.tipo = 'sucursal' THEN s.nombre
+                            ELSE c.nombre
+                        END AS nombre,
+                        CASE 
+                            WHEN e.tipo = 'sucursal' THEN s.latitud
+                            ELSE NULL  # Suponiendo que clientes no tienen lat/lon
+                        END AS latitud,
+                        CASE 
+                            WHEN e.tipo = 'sucursal' THEN s.longitud
+                            ELSE NULL
+                        END AS longitud,
+                        CASE 
+                            WHEN e.tipo = 'sucursal' THEN s.direccion
+                            ELSE c.direccion
+                        END AS direccion
+                    FROM entregas e
+                    LEFT JOIN sucursales s ON e.sucursal_id = s.id
+                    LEFT JOIN clientes_delivery c ON e.cliente_id = c.id
+                    WHERE e.fecha_entrega = %s
                 ''', (fecha,))
-                df_sucursal = pd.DataFrame(cursor.fetchall(), columns=["Sucursal", "Dirección", "Fecha"])
-                st.dataframe(df_sucursal)
                 
-                # Recojos a domicilio
-                st.subheader("Recojos a Domicilio")
-                cursor.execute('''
-                    SELECT nombre, telefono, direccion, fecha_recogida
-                    FROM clientes_delivery
-                    WHERE fecha_recogida = %s
-                ''', (fecha,))
-                df_domicilio = pd.DataFrame(cursor.fetchall(), columns=["Cliente", "Teléfono", "Dirección", "Fecha"])
-                st.dataframe(df_domicilio)
+                ubicaciones = [
+                    (nombre, lat, lon, dir) 
+                    for nombre, lat, lon, dir in cursor.fetchall() 
+                    if lat is not None and lon is not None
+                ]
                 
+                if ubicaciones:
+                    # Optimizar ruta
+                    matriz = calcular_matriz_distancias(ubicaciones)
+                    ruta_optimizada = optimizar_ruta(matriz)
+                    
+                    if ruta_optimizada:
+                        # Mostrar ruta ordenada
+                        st.subheader("Orden de Visita")
+                        for i, idx in enumerate(ruta_optimizada):
+                            st.write(f"{i+1}. {ubicaciones[idx][0]} - {ubicaciones[idx][3]}")
+                        
+                        # Mostrar mapa
+                        coordenadas = [[ubicaciones[idx][2], ubicaciones[idx][1]] for idx in ruta_optimizada]
+                        if ruta_geojson := obtener_ruta_real(coordenadas, ors_api_key):
+                            mapa = folium.Map(location=[-12.0464, -77.0428], zoom_start=12)
+                            folium.GeoJson(ruta_geojson).add_to(mapa)
+                            for idx in ruta_optimizada:
+                                folium.Marker(
+                                    [ubicaciones[idx][1], ubicaciones[idx][2]],
+                                    popup=ubicaciones[idx][0]
+                                ).add_to(mapa)
+                            folium_static(mapa)
+                else:
+                    st.warning("No hay entregas programadas para esta fecha")
+                    
             finally:
                 cursor.close()
                 conn.close()
-
-    # -------------------- SECCIÓN RUTA OPTIMIZADA --------------------
-        elif menu == "Ver Ruta Optimizada":
-            st.header("🗺️ Ruta Optimizada")
-        
-        fecha = st.date_input("Seleccionar fecha para ruta")
-        
-        if st.button("Generar Ruta"):
-            conn = conectar_db()
-            if conn:
-                try:
-                    cursor = conn.cursor()
-                    
-                    # Obtener ubicaciones (sucursales + clientes)
-                    cursor.execute('''
-                        SELECT 
-                            CASE 
-                                WHEN e.tipo = 'sucursal' THEN s.nombre
-                                ELSE c.nombre
-                            END AS nombre,
-                            CASE 
-                                WHEN e.tipo = 'sucursal' THEN s.latitud
-                                ELSE NULL  # Suponiendo que clientes no tienen lat/lon
-                            END AS latitud,
-                            CASE 
-                                WHEN e.tipo = 'sucursal' THEN s.longitud
-                                ELSE NULL
-                            END AS longitud,
-                            CASE 
-                                WHEN e.tipo = 'sucursal' THEN s.direccion
-                                ELSE c.direccion
-                            END AS direccion
-                        FROM entregas e
-                        LEFT JOIN sucursales s ON e.sucursal_id = s.id
-                        LEFT JOIN clientes_delivery c ON e.cliente_id = c.id
-                        WHERE e.fecha_entrega = %s
-                    ''', (fecha,))
-                    
-                    ubicaciones = [
-                        (nombre, lat, lon, dir) 
-                        for nombre, lat, lon, dir in cursor.fetchall() 
-                        if lat is not None and lon is not None
-                    ]
-                    
-                    if ubicaciones:
-                        # Optimizar ruta
-                        matriz = calcular_matriz_distancias(ubicaciones)
-                        ruta_optimizada = optimizar_ruta(matriz)
-                        
-                        if ruta_optimizada:
-                            # Mostrar ruta ordenada
-                            st.subheader("Orden de Visita")
-                            for i, idx in enumerate(ruta_optimizada):
-                                st.write(f"{i+1}. {ubicaciones[idx][0]} - {ubicaciones[idx][3]}")
-                            
-                            # Mostrar mapa
-                            coordenadas = [[ubicaciones[idx][2], ubicaciones[idx][1]] for idx in ruta_optimizada]
-                            if ruta_geojson := obtener_ruta_real(coordenadas, ors_api_key):
-                                mapa = folium.Map(location=[-12.0464, -77.0428], zoom_start=12)
-                                folium.GeoJson(ruta_geojson).add_to(mapa)
-                                for idx in ruta_optimizada:
-                                    folium.Marker(
-                                        [ubicaciones[idx][1], ubicaciones[idx][2]],
-                                        popup=ubicaciones[idx][0]
-                                    ).add_to(mapa)
-                                folium_static(mapa)
-                    else:
-                        st.warning("No hay entregas programadas para esta fecha")
-                        
-                finally:
-                    cursor.close()
-                    conn.close()
-
+                
 # -------------------- BOTÓN CERRAR SESIÓN --------------------
 if 'logged_in' in st.session_state and st.session_state.logged_in:
     if st.sidebar.button("Cerrar Sesión"):
