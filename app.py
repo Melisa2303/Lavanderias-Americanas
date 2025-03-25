@@ -208,21 +208,27 @@ def mostrar_login():
     with col2:
         st.title("Lavanderías Americanas")
     
+    # Usar un formulario para agrupar los elementos del login
     with st.form("login_form"):
         usuario = st.text_input("Usuario")
         contraseña = st.text_input("Contraseña", type="password")
         
-        if st.form_submit_button("Ingresar"):
+        submitted = st.form_submit_button("Ingresar")
+        
+        if submitted:
             perfil = verificar_login(usuario, contraseña)
             if perfil:
                 st.session_state.update({
                     'perfil': perfil,
                     'usuario': usuario,
-                    'logged_in': True
+                    'logged_in': True,
+                    'mostrar_bienvenida': True  # Nuevo estado para controlar el mensaje
                 })
+                # Limpiar el contenedor del login
+                st.empty()
                 return True
             else:
-                st.error("Credenciales incorrectas")
+                st.error("Usuario o contraseña incorrectos")
     return False
 
 # Función para mostrar el menú según el perfil
@@ -246,8 +252,7 @@ def mostrar_menu():
 
 # Verificar si el usuario está logueado
 if 'logged_in' not in st.session_state:
-    if mostrar_login():
-        pass  # El cambio de estado hará que Streamlit rerun automáticamente
+    mostrar_login()
 else:
     # Cabecera
     col1, col2 = st.columns([1, 4])
@@ -256,8 +261,12 @@ else:
     with col2:
         st.title("Lavanderías Americanas")
     
-    # Mostrar mensaje de bienvenida
-    st.success(f"Bienvenido, {st.session_state['usuario']} ({st.session_state['perfil']})")
+    # Mostrar mensaje de bienvenida solo una vez
+    if st.session_state.get('mostrar_bienvenida', False):
+        st.success(f"Bienvenido, {st.session_state['usuario']} ({st.session_state['perfil']})")
+        # Usamos un placeholder para que el mensaje desaparezca al cambiar de pestaña
+        placeholder = st.empty()
+        st.session_state['mostrar_bienvenida'] = False
     
     menu = mostrar_menu()
 
