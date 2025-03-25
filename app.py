@@ -268,27 +268,30 @@ else:
     if menu == "Ingresar Boleta":
         st.header("📝 Ingresar Boleta")
 
-        with st.form(key="form_boleta", clear_on_submit=True):
+        # Inicializar el formulario (esto es CLAVE para evitar el error del submit button)    
+        form = st.form(key="form_boleta")
+
+        with form:
             # 1. Campos principales
             col1, col2 = st.columns(2)
             with col1:
-                numero_boleta = st.text_input("Número de Boleta", help="Solo números, único por sucursal/delivery")
+                numero_boleta = st.text_input("Número de Boleta*", help="Solo números, único por sucursal/delivery")
             with col2:
-                dni_cliente = st.text_input("DNI del Cliente", max_chars=8, help="8 dígitos exactos")
+                dni_cliente = st.text_input("DNI del Cliente*", max_chars=8, help="8 dígitos exactos")
         
-            nombre_cliente = st.text_input("Nombre del Cliente", help="Solo letras y espacios")
+            nombre_cliente = st.text_input("Nombre del Cliente*", help="Solo letras y espacios")
         
             # 2. Campos de pago
             col_pago1, col_pago2 = st.columns(2)
             with col_pago1:
-                monto_pagar = st.number_input("Monto a Pagar", min_value=0.0, step=0.01, format="%.2f")
+                monto_pagar = st.number_input("Monto a Pagar*", min_value=0.0, step=0.01, format="%.2f")
             with col_pago2:
-                medio_pago = st.selectbox("Medio de Pago", ["Efectivo", "Yape", "Plin", "Transferencia"])
+                medio_pago = st.selectbox("Medio de Pago*", ["Efectivo", "Yape", "Plin", "Transferencia"])
         
             fecha_registro = st.date_input("Fecha de Registro*", datetime.date.today())
         
             # 3. Tipo de entrega con lógica condicional
-            tipo_entrega = st.radio("Tipo de Entrega", ["Sucursal", "Delivery"], horizontal=True)
+            tipo_entrega = st.radio("Tipo de Entrega*", ["Sucursal", "Delivery"], horizontal=True)
         
             sucursal_id = None
             if tipo_entrega == "Sucursal":
@@ -314,8 +317,8 @@ else:
                     if 'cursor' in locals(): cursor.close()
                     if 'conn' in locals(): conn.close()
 
-            # 4. Botón de guardado (DEBE estar DENTRO del form)
-            submitted = st.form_submit_button("💾 Guardar Boleta")
+            # 4. Botón de submit (ESTA ES LA CLAVE PARA SOLUCIONAR EL ERROR)
+            submitted = form.form_submit_button("💾 Guardar Boleta")
         
             # 5. Validaciones al enviar
             if submitted:
@@ -396,7 +399,7 @@ else:
                 else:
                     for error in errores:
                         st.error(error)
-   
+    
     # -------------------- SECCIÓN INGRESAR SUCURSAL --------------------
     elif menu == "Ingresar Sucursal":
         st.header("🏪 Ingresar Sucursal")
