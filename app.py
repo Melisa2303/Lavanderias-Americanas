@@ -311,16 +311,16 @@ else:
                         if 'cursor' in locals():
                             cursor.close()
                         conn.close()
-                else:
-                    st.error("No se pudo conectar a la base de datos")
-                    sucursal_id = None
+                        else:
+                            st.error("No se pudo conectar a la base de datos")
+                            sucursal_id = None
                 
-                    except Exception as e:
-                        st.error(f"Error al cargar sucursales: {str(e)}")
-                    finally:
-                        if 'cursor' in locals():
-                            cursor.close()
-                        conn.close()
+                            except Exception as e:
+                                st.error(f"Error al cargar sucursales: {str(e)}")
+                            finally:
+                                if 'cursor' in locals():
+                                    cursor.close()
+                                conn.close()
         
             submitted = st.form_submit_button("Guardar Boleta")
         
