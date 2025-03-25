@@ -200,36 +200,38 @@ def verificar_login(usuario, contraseña):
     return None
 
 # Pantalla de inicio de sesión
+# Función de login optimizada
 def mostrar_login():
-    # Mostrar logo y nombre de la empresa
-    col1, col2 = st.columns([1, 4])
-    with col1:
-        st.image("https://github.com/Melisa2303/Lavanderias-Americanas/blob/main/LOGO.PNG?raw=true", width=100)
-    with col2:
-        st.title("Lavanderías Americanas")
+    # Contenedor para el formulario de login
+    login_container = st.empty()
     
-    # Usar un formulario para agrupar los elementos del login
-    with st.form("login_form"):
-        usuario = st.text_input("Usuario")
-        contraseña = st.text_input("Contraseña", type="password")
+    with login_container.container():
+        # Mostrar logo y nombre de la empresa
+        col1, col2 = st.columns([1, 4])
+        with col1:
+            st.image("https://github.com/Melisa2303/Lavanderias-Americanas/blob/main/LOGO.PNG?raw=true", width=100)
+        with col2:
+            st.title("Lavanderías Americanas")
         
-        submitted = st.form_submit_button("Ingresar")
-        
-        if submitted:
-            perfil = verificar_login(usuario, contraseña)
-            if perfil:
-                st.session_state.update({
-                    'perfil': perfil,
-                    'usuario': usuario,
-                    'logged_in': True,
-                    'mostrar_bienvenida': True  # Nuevo estado para controlar el mensaje
-                })
-                # Limpiar el contenedor del login
-                st.empty()
-                return True
-            else:
-                st.error("Usuario o contraseña incorrectos")
-    return False
+        # Formulario de login
+        with st.form("login_form"):
+            usuario = st.text_input("Usuario")
+            contraseña = st.text_input("Contraseña", type="password")
+            
+            if st.form_submit_button("Ingresar"):
+                perfil = verificar_login(usuario, contraseña)
+                if perfil:
+                    st.session_state.update({
+                        'perfil': perfil,
+                        'usuario': usuario,
+                        'logged_in': True,
+                        'first_login': True  # Para mostrar bienvenida
+                    })
+                    login_container.empty()  # Limpiar el login
+                    st.rerun()  # Forzar actualización inmediata
+                    return
+                else:
+                    st.error("Credenciales incorrectas")
 
 # Función para mostrar el menú según el perfil
 def mostrar_menu():
