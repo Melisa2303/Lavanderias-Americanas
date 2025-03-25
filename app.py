@@ -265,7 +265,7 @@ else:
     
     menu = mostrar_menu()
 
-# -------------------- SECCIÓN INGRESAR BOLETA --------------------
+    # -------------------- SECCIÓN INGRESAR BOLETA --------------------
 if menu == "Ingresar Boleta":
     st.header("📄 Ingresar Boleta")
     
@@ -601,7 +601,7 @@ elif menu == "Ver Ruta Optimizada":
             finally:
                 cursor.close()
                 conn.close()
-                
+
 # -------------------- BOTÓN CERRAR SESIÓN --------------------
 if 'logged_in' in st.session_state and st.session_state.logged_in:
     if st.sidebar.button("Cerrar Sesión"):
