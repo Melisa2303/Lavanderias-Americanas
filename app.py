@@ -27,7 +27,7 @@ ors_api_key = "5b3ce3597851110001cf62486bc22aa6557847f3a94a99f41f14ec16"  # Reem
 def conectar_db():
     try:
         return psycopg2.connect(
-            host="db.TU_ID_SUPABASE.supabase.co",  # Reemplaza con tu host real
+            host="db.iplccwzxyprinddvskyz.supabase.co",  # Reemplaza con tu host real
             dbname="postgres",
             user="postgres",
             password="lavamer123",  # Contraseña directa aquí
@@ -201,15 +201,24 @@ def verificar_login(usuario, contraseña):
 
 # Pantalla de inicio de sesión
 def mostrar_login():
-    st.title("Inicio de Sesión")
+    # Mostrar logo y nombre de la empresa
+    col1, col2 = st.columns([1, 4])
+    with col1:
+        st.image("https://github.com/Melisa2303/Lavanderias-Americanas/blob/main/LOGO.PNG?raw=true", width=100)
+    with col2:
+        st.title("Lavanderías Americanas")
+    
+    st.subheader("Inicio de Sesión")
     usuario = st.text_input("Usuario")
     contraseña = st.text_input("Contraseña", type="password")
+    
     if st.button("Ingresar"):
         perfil = verificar_login(usuario, contraseña)
         if perfil:
             st.session_state['perfil'] = perfil
             st.session_state['usuario'] = usuario
-            st.success(f"Bienvenido, {usuario} ({perfil})")
+            st.session_state['logged_in'] = True
+            st.experimental_rerun()  # Forzar redirección inmediata
         else:
             st.error("Usuario o contraseña incorrectos")
 
@@ -230,9 +239,10 @@ def mostrar_menu():
         ])
     return menu
 
+# ------------ INICIO DE LA APLICACIÓN ------------
+
 # Verificar si el usuario está logueado
-# ------------ PARTE 5: INTERFAZ DE USUARIO COMPLETA ------------
-if 'perfil' not in st.session_state:
+if 'logged_in' not in st.session_state:
     mostrar_login()
 else:
     # Cabecera
@@ -241,7 +251,10 @@ else:
         st.image("https://github.com/Melisa2303/Lavanderias-Americanas/blob/main/LOGO.PNG?raw=true", width=100)
     with col2:
         st.title("Lavanderías Americanas")
-
+    
+    # Mostrar mensaje de bienvenida
+    st.success(f"Bienvenido, {st.session_state['usuario']} ({st.session_state['perfil']})")
+    
     menu = mostrar_menu()
 
     # -------------------- SECCIÓN INGRESAR BOLETA --------------------
@@ -552,3 +565,4 @@ else:
     if st.sidebar.button("Cerrar Sesión"):
         st.session_state.clear()
         st.experimental_rerun()
+        
