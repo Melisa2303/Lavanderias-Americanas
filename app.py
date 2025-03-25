@@ -266,7 +266,7 @@ else:
     menu = mostrar_menu()
 
     # -------------------- SECCIÓN INGRESAR BOLETA --------------------
-if menu == "Ingresar Boleta":
+    if menu == "Ingresar Boleta":
     st.header("📄 Ingresar Boleta")
     
     with st.form("form_boleta"):
@@ -369,7 +369,6 @@ if menu == "Ingresar Boleta":
             else:
                 for error in errores:
                     st.error(error)
-
     # -------------------- SECCIÓN INGRESAR SUCURSAL --------------------
     elif menu == "Ingresar Sucursal":
         st.header("🏪 Ingresar Sucursal")
