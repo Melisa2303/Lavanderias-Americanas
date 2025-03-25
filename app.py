@@ -218,9 +218,11 @@ def mostrar_login():
             st.session_state['perfil'] = perfil
             st.session_state['usuario'] = usuario
             st.session_state['logged_in'] = True
-            st.experimental_rerun()  # Forzar redirección inmediata
+            # Eliminamos el st.experimental_rerun() y usamos un return
+            return True
         else:
             st.error("Usuario o contraseña incorrectos")
+    return False
 
 # Función para mostrar el menú según el perfil
 def mostrar_menu():
@@ -243,7 +245,9 @@ def mostrar_menu():
 
 # Verificar si el usuario está logueado
 if 'logged_in' not in st.session_state:
-    mostrar_login()
+    if mostrar_login():
+        # Si el login fue exitoso, forzamos un rerun con st.experimental_rerun()
+        st.experimental_rerun()
 else:
     # Cabecera
     col1, col2 = st.columns([1, 4])
