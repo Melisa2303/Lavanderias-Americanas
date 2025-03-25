@@ -285,43 +285,40 @@ else:
     
             sucursal_id = None
             if tipo_entrega == "Sucursal":
-                # Primero creamos el selectbox vacío
-                sucursal_seleccionada = st.selectbox(
-                    "Seleccione sucursal",
-                    options=[],
-                    disabled=True  # Deshabilitado hasta tener datos
-                )
+                # Contenedor para el selector de sucursales
+                sucursal_container = st.container()
+                
+                with sucursal_container:
+                    conn = conectar_db()
+                    if conn:
+                        try:
+                            cursor = conn.cursor()
+                            cursor.execute('SELECT id, nombre FROM sucursales ORDER BY nombre')
+                            sucursales = cursor.fetchall()
             
-                conn = conectar_db()
-                if conn:
-                    try:
-                        cursor = conn.cursor()
-                        cursor.execute('SELECT id, nombre FROM sucursales ORDER BY nombre')
-                        sucursales = cursor.fetchall()
-    
-                        if sucursales:
-                            # Actualizamos el selectbox con las sucursales reales
-                            sucursal_seleccionada = st.selectbox(
-                                "Seleccione sucursal",
-                                options=sucursales,
-                                format_func=lambda x: x[1],
-                                key="sucursal_select"  # Key único para evitar duplicados
-                            )
-                            sucursal_id = sucursal_seleccionada[0]
-                        else:
-                            st.warning("No hay sucursales registradas. Por favor agregue sucursales primero.")
+                            if sucursales:
+                                sucursal_seleccionada = st.selectbox(
+                                    "Seleccione sucursal",
+                                    options=sucursales,
+                                    format_func=lambda x: x[1]
+                                )
+                                sucursal_id = sucursal_seleccionada[0]
+                            else:
+                                st.warning("No hay sucursales registradas. Por favor agregue sucursales primero.")
+                                sucursal_id = None
+                
+                        except Exception as e:
+                            st.error(f"Error al cargar sucursales: {str(e)}")
                             sucursal_id = None
-        
-                    except Exception as e:
-                        st.error(f"Error al cargar sucursales: {str(e)}")
+                        finally:
+                            if 'cursor' in locals():
+                                cursor.close()
+                            conn.close()
+                    else:
+                        st.error("No se pudo conectar a la base de datos")
                         sucursal_id = None
-                    finally:
-                        if 'cursor' in locals():
-                            cursor.close()
-                        conn.close()
-                else:
-                    st.error("No se pudo conectar a la base de datos")
-                    sucursal_id = None
+            else:  # Si es Delivery
+                sucursal_id = None  # Aseguramos que no quede valor previo
     
             submitted = st.form_submit_button("Guardar Boleta")
     
