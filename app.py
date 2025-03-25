@@ -291,23 +291,30 @@ else:
                         cursor = conn.cursor()
                         cursor.execute('SELECT id, nombre FROM sucursales ORDER BY nombre')
                         sucursales = cursor.fetchall()
-                    
-                        # Si no hay sucursales, mostramos un mensaje en el desplegable
-                        if not sucursales:
-                            sucursales = [(-1, "⚠️ No hay sucursales registradas")]
-                    
-                        sucursal_seleccionada = st.selectbox(
-                            "Seleccione sucursal",
-                            options=sucursales,
-                            format_func=lambda x: x[1]  # Muestra el nombre
-                        )
-                        sucursal_id = sucursal_seleccionada[0]  # Obtenemos el ID
-                    
-                        # Si se selecciona la opción "No hay sucursales", evitamos guardar
-                        if sucursal_id == -1:
-                            st.warning("Registre sucursales en la pestaña 'Ingresar Sucursal'")
+            
+                        # Mostrar siempre el selectbox, incluso si está vacío
+                        if sucursales:
+                            sucursal_seleccionada = st.selectbox(
+                                "Seleccione sucursal",
+                                options=sucursales,
+                                format_func=lambda x: x[1]
+                            )
+                            sucursal_id = sucursal_seleccionada[0]
+                        else:
+                            st.warning("No hay sucursales registradas. Por favor agregue sucursales primero.")
                             sucursal_id = None
-                        
+                
+                    except Exception as e:
+                        st.error(f"Error al cargar sucursales: {str(e)}")
+                        sucursal_id = None
+                    finally:
+                        if 'cursor' in locals():
+                            cursor.close()
+                        conn.close()
+                else:
+                    st.error("No se pudo conectar a la base de datos")
+                    sucursal_id = None
+                
                     except Exception as e:
                         st.error(f"Error al cargar sucursales: {str(e)}")
                     finally:
