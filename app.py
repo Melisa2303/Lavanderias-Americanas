@@ -267,31 +267,29 @@ else:
     # -------------------- SECCIÓN INGRESAR BOLETA --------------------
     if menu == "Ingresar Boleta":
         st.header("📝 Ingresar Boleta")
-
-        # Inicializar el formulario (esto es CLAVE para evitar el error del submit button)    
-        form = st.form(key="form_boleta")
-
-        with form:
+        
+        # Usamos esta estructura que SI funciona con Streamlit
+        with st.form("form_boleta", clear_on_submit=True):
             # 1. Campos principales
             col1, col2 = st.columns(2)
             with col1:
-                numero_boleta = st.text_input("Número de Boleta*", help="Solo números, único por sucursal/delivery")
+                numero_boleta = st.text_input("Número de Boleta*", key="num_boleta")
             with col2:
-                dni_cliente = st.text_input("DNI del Cliente*", max_chars=8, help="8 dígitos exactos")
+                dni_cliente = st.text_input("DNI del Cliente*", max_chars=8, key="dni_cli")
         
-            nombre_cliente = st.text_input("Nombre del Cliente*", help="Solo letras y espacios")
+            nombre_cliente = st.text_input("Nombre del Cliente*", key="nom_cli")
         
             # 2. Campos de pago
             col_pago1, col_pago2 = st.columns(2)
             with col_pago1:
-                monto_pagar = st.number_input("Monto a Pagar*", min_value=0.0, step=0.01, format="%.2f")
+                monto_pagar = st.number_input("Monto a Pagar*", min_value=0.0, step=0.01, format="%.2f", key="monto")
             with col_pago2:
-                medio_pago = st.selectbox("Medio de Pago*", ["Efectivo", "Yape", "Plin", "Transferencia"])
+                medio_pago = st.selectbox("Medio de Pago*", ["Efectivo", "Yape", "Plin", "Transferencia"], key="medio_pago")
         
-            fecha_registro = st.date_input("Fecha de Registro*", datetime.date.today())
+            fecha_registro = st.date_input("Fecha de Registro*", datetime.date.today(), key="fecha_reg")
         
-            # 3. Tipo de entrega con lógica condicional
-            tipo_entrega = st.radio("Tipo de Entrega*", ["Sucursal", "Delivery"], horizontal=True)
+            # 3. Tipo de entrega
+            tipo_entrega = st.radio("Tipo de Entrega*", ["Sucursal", "Delivery"], horizontal=True, key="tipo_ent")
         
             sucursal_id = None
             if tipo_entrega == "Sucursal":
@@ -306,7 +304,8 @@ else:
                             sucursal_nombre = st.selectbox(
                                 "Seleccione Sucursal*",
                                 options=sucursales,
-                                format_func=lambda x: x[1]
+                                format_func=lambda x: x[1],
+                                key="select_sucursal"
                             )
                             sucursal_id = sucursal_nombre[0]
                         else:
@@ -317,56 +316,59 @@ else:
                     if 'cursor' in locals(): cursor.close()
                     if 'conn' in locals(): conn.close()
 
-            # 4. Botón de submit (ESTA ES LA CLAVE PARA SOLUCIONAR EL ERROR)
+            # 4. BOTÓN QUE SÍ FUNCIONA (usando st.form_submit_button CORRECTAMENTE)
             submitted = st.form_submit_button("💾 Guardar Boleta")
         
-            # 5. Validaciones al enviar
+            # 5. Validaciones
             if submitted:
                 errores = []
             
-                # Validación de campos obligatorios
+                # Validaciones básicas
                 if not numero_boleta.isdigit():
                     errores.append("🚫 Número de boleta debe contener solo números")
             
                 if len(dni_cliente) != 8 or not dni_cliente.isdigit():
                     errores.append("🚫 DNI debe tener 8 dígitos numéricos")
                 
-                if not nombre_cliente.replace(' ', '').isalpha():
+                if not all(c.isalpha() or c.isspace() for c in nombre_cliente):
                     errores.append("🚫 Nombre solo puede contener letras y espacios")
                 
                 if monto_pagar <= 0:
                     errores.append("🚫 Monto debe ser mayor a 0")
             
                 # Validación de boleta única
-                try:
-                    conn = conectar_db()
-                    if conn:
-                        cursor = conn.cursor()
-                        if tipo_entrega == "Sucursal":
-                            cursor.execute('''
-                                SELECT COUNT(*) FROM boletas 
-                                WHERE numero_boleta = %s 
-                                AND tipo_entrega = 'Sucursal'
-                                AND sucursal_id = %s
-                            ''', (numero_boleta, sucursal_id))
-                            msg = "ya existe en esta sucursal"
-                        else:
-                            cursor.execute('''
-                                SELECT COUNT(*) FROM boletas 
-                                WHERE numero_boleta = %s 
-                                AND tipo_entrega = 'Delivery'
-                            ''', (numero_boleta,))
-                            msg = "ya existe en deliveries"
-                    
-                        if cursor.fetchone()[0] > 0:
-                            errores.append(f"🚫 Boleta {numero_boleta} {msg}")
-                except Exception as e:
-                    st.error(f"Error de validación: {e}")
-                finally:
-                    if 'cursor' in locals(): cursor.close()
-                    if 'conn' in locals(): conn.close()
+                if not errores:
+                    try:
+                        conn = conectar_db()
+                        if conn:
+                            cursor = conn.cursor()
+                            if tipo_entrega == "Sucursal":
+                                cursor.execute('''
+                                    SELECT 1 FROM boletas 
+                                    WHERE numero_boleta = %s 
+                                    AND tipo_entrega = 'Sucursal'
+                                    AND sucursal_id = %s
+                                    LIMIT 1
+                                ''', (numero_boleta, sucursal_id))
+                                msg = "esta sucursal"
+                            else:
+                                cursor.execute('''
+                                    SELECT 1 FROM boletas 
+                                    WHERE numero_boleta = %s 
+                                    AND tipo_entrega = 'Delivery'
+                                    LIMIT 1
+                                ''', (numero_boleta,))
+                                msg = "deliveries"
+                            
+                            if cursor.fetchone():
+                                errores.append(f"🚫 La boleta {numero_boleta} ya existe en {msg}")
+                    except Exception as e:
+                        st.error(f"Error de validación: {e}")
+                    finally:
+                        if 'cursor' in locals(): cursor.close()
+                        if 'conn' in locals(): conn.close()
             
-                # 6. Guardar en base de datos si no hay errores
+                # 6. Guardar si no hay errores
                 if not errores:
                     try:
                         conn = conectar_db()
