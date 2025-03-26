@@ -427,13 +427,18 @@ else:
     elif menu == "Solicitar Recogida":
         st.header("🚚 Solicitar Recogida")
     
-        # Usar columnas para mejor organización
-        col1, col2 = st.columns([1, 2])
-    
-        with col1:
-            tipo_recogida = st.radio("Tipo de Recogida", ["Sucursal", "Cliente Delivery"], key="tipo_recogida")
+        tipo_recogida = st.radio("Tipo de Recogida", ["Sucursal", "Cliente Delivery"], key="tipo_recogida")
 
         if tipo_recogida == "Sucursal":
+            # Primero mostrar los elementos de UI
+            sucursal_placeholder = st.empty()
+            fecha_placeholder = st.empty()
+            button_placeholder = st.empty()
+        
+            # Inicializar variables
+            sucursal_id = None
+            fecha_recogida = None
+        
             try:
                 conn = conectar_db()
                 if conn:
@@ -442,71 +447,74 @@ else:
                     sucursales = cursor.fetchall()
                 
                     if sucursales:
-                        with col2:
-                            # Selector de sucursal con formato mejorado
-                            sucursal_seleccionada = st.selectbox(
-                                "Seleccione sucursal",
-                                options=sucursales,
-                                format_func=lambda x: x[1],  # Muestra el nombre
-                                key="select_sucursal"
-                            )
-                            sucursal_id = sucursal_seleccionada[0]
-                        
-                            fecha_recogida = st.date_input(
-                                "Fecha de Recogida",
-                                min_value=datetime.date.today(),
-                                key="fecha_recogida_suc"
-                            )
-                        
-                            if st.button("📅 Programar Recogida", key="btn_recogida_suc"):
-                                try:
-                                    # Registrar recogida
-                                    cursor.execute('''
-                                        INSERT INTO recogidas (sucursal_id, fecha)
-                                        VALUES (%s, %s)
-                                    ''', (sucursal_id, fecha_recogida))
+                        # Mostrar selectbox con las sucursales
+                        sucursal_seleccionada = sucursal_placeholder.selectbox(
+                            "Seleccione sucursal",
+                            options=sucursales,
+                            format_func=lambda x: x[1],
+                            key="select_sucursal"
+                        )
+                        sucursal_id = sucursal_seleccionada[0]
+                    
+                        # Mostrar selector de fecha
+                        fecha_recogida = fecha_placeholder.date_input(
+                            "Fecha de Recogida",
+                            min_value=datetime.date.today(),
+                            key="fecha_sucursal"
+                        )
+                    
+                        # Botón de acción
+                        if button_placeholder.button("📅 Programar Recogida", key="btn_sucursal"):
+                            try:
+                                # Registrar recogida
+                                cursor.execute('''
+                                    INSERT INTO recogidas (sucursal_id, fecha)
+                                    VALUES (%s, %s)
+                                ''', (sucursal_id, fecha_recogida))
+                            
+                                # Programar entrega (3 días después)
+                                fecha_entrega = fecha_recogida + timedelta(days=3)
+                                cursor.execute('''
+                                    INSERT INTO entregas (tipo, sucursal_id, fecha_entrega)
+                                    VALUES (%s, %s, %s)
+                                ''', ("sucursal", sucursal_id, fecha_entrega))
                                 
-                                    # Programar entrega automática (3 días después)
-                                    fecha_entrega = fecha_recogida + timedelta(days=3)
-                                    cursor.execute('''
-                                        INSERT INTO entregas (tipo, sucursal_id, fecha_entrega)
-                                        VALUES (%s, %s, %s)
-                                    ''', ("sucursal", sucursal_id, fecha_entrega))
-                                
-                                    conn.commit()
-                                    st.success(f"""
-                                        ✅ Recogida programada exitosamente:
-                                        - **Sucursal:** {sucursal_seleccionada[1]}
-                                        - **Fecha recogida:** {fecha_recogida}
-                                        - **Entrega programada:** {fecha_entrega}
-                                    """)
-                                    st.balloons()
-                                
-                                except Exception as e:
-                                    conn.rollback()
-                                    st.error(f"🚫 Error al programar recogida: {str(e)}")
+                                conn.commit()
+                                st.success(f"✅ Recogida programada para el {fecha_recogida}")
+                                st.balloons()
+                            
+                                # Limpiar los placeholders después de guardar
+                                sucursal_placeholder.empty()
+                                fecha_placeholder.empty()
+                                button_placeholder.empty()
+                            
+                            except Exception as e:
+                                conn.rollback()
+                                st.error(f"Error al guardar: {str(e)}")
                     else:
-                        st.warning("⚠️ No hay sucursales registradas")
+                        st.warning("No hay sucursales registradas")
                     
             except Exception as e:
-                st.error(f"🚫 Error de conexión: {str(e)}")
+                st.error(f"Error de conexión: {str(e)}")
             finally:
                 if 'cursor' in locals(): cursor.close()
-                if 'conn' in locals(): conn.close()
+                if 'conn' in locals() and conn:  # Verificación adicional
+                    try:
+                        conn.close()
+                    except:
+                        pass  # Ignorar errores al cerrar conexión
 
         else:  # Cliente Delivery
-            with col2:
-                nombre = st.text_input("Nombre del Cliente*", key="nombre_delivery")
-                telefono = st.text_input("Teléfono* (9 dígitos)", key="tel_delivery")
-                direccion = st.text_input("Dirección Completa*", key="dir_delivery")
-                fecha_recogida = st.date_input(
-                    "Fecha de Recogida",
-                    min_value=datetime.date.today(),
-                    key="fecha_recogida_del"
-                )
+            # [Mantener el código existente para delivery que sí funciona]
+            nombre = st.text_input("Nombre del Cliente")
+            telefono = st.text_input("Teléfono")
+            direccion = st.text_input("Dirección")
+            fecha = st.date_input("Fecha de Recogida", min_value=datetime.date.today())
+        
+        if st.button("Registrar Recogida"):
             
-                if st.button("📦 Registrar Recogida", key="btn_recogida_del"):
-                    errores = []
+                if st.button("📦 Registrar Recogida"):
+                 
                 
                     # Validaciones
                     if not nombre.strip():
