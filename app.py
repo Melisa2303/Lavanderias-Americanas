@@ -513,8 +513,8 @@ else:
         
         if st.button("Registrar Recogida"):
             
-                if st.button("📦 Registrar Recogida"):
-                 
+                if st.button("📦 Registrar Recogida", key="btn_recogida_del"):
+                    errores = []):
                 
                     # Validaciones
                     if not nombre.strip():
