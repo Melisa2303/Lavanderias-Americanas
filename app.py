@@ -426,99 +426,135 @@ else:
     # -------------------- SECCIÓN SOLICITAR RECOGIDA --------------------
     elif menu == "Solicitar Recogida":
         st.header("🚚 Solicitar Recogida")
-        
-        tipo_recogida = st.radio("Tipo de Recogida", ["Sucursal", "Cliente Delivery"])
+    
+        # Usar columnas para mejor organización
+        col1, col2 = st.columns([1, 2])
+    
+        with col1:
+            tipo_recogida = st.radio("Tipo de Recogida", ["Sucursal", "Cliente Delivery"], key="tipo_recogida")
 
         if tipo_recogida == "Sucursal":
-            conn = conectar_db()
-            if conn:
-                try:
+            try:
+                conn = conectar_db()
+                if conn:
                     cursor = conn.cursor()
-                    cursor.execute('SELECT id, nombre FROM sucursales')
+                    cursor.execute('SELECT id, nombre FROM sucursales ORDER BY nombre')
                     sucursales = cursor.fetchall()
-                    
+                
                     if sucursales:
-                        sucursal_id = st.selectbox("Seleccione sucursal", 
-                                                 [s[0] for s in sucursales],
-                                                 format_func=lambda x: [s[1] for s in sucursales if s[0] == x][0])
-                        fecha = st.date_input("Fecha de Recogida")
+                        with col2:
+                            # Selector de sucursal con formato mejorado
+                            sucursal_seleccionada = st.selectbox(
+                                "Seleccione sucursal",
+                                options=sucursales,
+                                format_func=lambda x: x[1],  # Muestra el nombre
+                                key="select_sucursal"
+                            )
+                            sucursal_id = sucursal_seleccionada[0]
                         
-                        if st.button("Programar Recogida"):
-                            if fecha < datetime.date.today():
-                                st.error("La fecha no puede ser pasada")
-                            else:
+                            fecha_recogida = st.date_input(
+                                "Fecha de Recogida",
+                                min_value=datetime.date.today(),
+                                key="fecha_recogida_suc"
+                            )
+                        
+                            if st.button("📅 Programar Recogida", key="btn_recogida_suc"):
                                 try:
                                     # Registrar recogida
                                     cursor.execute('''
                                         INSERT INTO recogidas (sucursal_id, fecha)
                                         VALUES (%s, %s)
-                                    ''', (sucursal_id, fecha))
-                                    
-                                    # Programar entrega (3 días después)
-                                    fecha_entrega = fecha + timedelta(days=3)
+                                    ''', (sucursal_id, fecha_recogida))
+                                
+                                    # Programar entrega automática (3 días después)
+                                    fecha_entrega = fecha_recogida + timedelta(days=3)
                                     cursor.execute('''
                                         INSERT INTO entregas (tipo, sucursal_id, fecha_entrega)
                                         VALUES (%s, %s, %s)
                                     ''', ("sucursal", sucursal_id, fecha_entrega))
-                                    
+                                
                                     conn.commit()
-                                    st.success(f"✅ Recogida programada para el {fecha}")
+                                    st.success(f"""
+                                        ✅ Recogida programada exitosamente:
+                                        - **Sucursal:** {sucursal_seleccionada[1]}
+                                        - **Fecha recogida:** {fecha_recogida}
+                                        - **Entrega programada:** {fecha_entrega}
+                                    """)
+                                    st.balloons()
+                                
                                 except Exception as e:
                                     conn.rollback()
-                                    st.error(f"Error: {e}")
+                                    st.error(f"🚫 Error al programar recogida: {str(e)}")
                     else:
-                        st.warning("No hay sucursales registradas")
-                finally:
-                    cursor.close()
-                    conn.close()
+                        st.warning("⚠️ No hay sucursales registradas")
+                    
+            except Exception as e:
+                st.error(f"🚫 Error de conexión: {str(e)}")
+            finally:
+                if 'cursor' in locals(): cursor.close()
+                if 'conn' in locals(): conn.close()
 
         else:  # Cliente Delivery
-            nombre = st.text_input("Nombre del Cliente")
-            telefono = st.text_input("Teléfono")
-            direccion = st.text_input("Dirección")
-            fecha = st.date_input("Fecha de Recogida")
+            with col2:
+                nombre = st.text_input("Nombre del Cliente*", key="nombre_delivery")
+                telefono = st.text_input("Teléfono* (9 dígitos)", key="tel_delivery")
+                direccion = st.text_input("Dirección Completa*", key="dir_delivery")
+                fecha_recogida = st.date_input(
+                    "Fecha de Recogida",
+                    min_value=datetime.date.today(),
+                    key="fecha_recogida_del"
+                )
             
-            if st.button("Registrar Recogida"):
-                errores = []
-                if not nombre:
-                    errores.append("Nombre es obligatorio")
-                if not telefono.isdigit() or len(telefono) != 9:
-                    errores.append("Teléfono debe tener 9 dígitos")
-                if fecha < datetime.date.today():
-                    errores.append("Fecha no puede ser pasada")
+                if st.button("📦 Registrar Recogida", key="btn_recogida_del"):
+                    errores = []
                 
-                if not errores:
-                    conn = conectar_db()
-                    if conn:
+                    # Validaciones
+                    if not nombre.strip():
+                        errores.append("🚫 Nombre es obligatorio")
+                    if not telefono.isdigit() or len(telefono) != 9:
+                        errores.append("🚫 Teléfono debe tener 9 dígitos")
+                    if not direccion.strip():
+                        errores.append("🚫 Dirección es obligatoria")
+                
+                    if not errores:
                         try:
-                            cursor = conn.cursor()
-                            # Registrar cliente
-                            cursor.execute('''
-                                INSERT INTO clientes_delivery (nombre, telefono, direccion, fecha_recogida)
-                                VALUES (%s, %s, %s, %s)
-                                RETURNING id
-                            ''', (nombre, telefono, direccion, fecha))
-                            cliente_id = cursor.fetchone()[0]
+                            conn = conectar_db()
+                            if conn:
+                                cursor = conn.cursor()
+                                # Registrar cliente
+                                cursor.execute('''
+                                    INSERT INTO clientes_delivery (nombre, telefono, direccion, fecha_recogida)
+                                    VALUES (%s, %s, %s, %s)
+                                    RETURNING id
+                                ''', (nombre.strip(), telefono, direccion.strip(), fecha_recogida))
+                                cliente_id = cursor.fetchone()[0]
                             
-                            # Programar entrega (3 días después)
-                            fecha_entrega = fecha + timedelta(days=3)
-                            cursor.execute('''
-                                INSERT INTO entregas (tipo, cliente_id, fecha_entrega)
-                                VALUES (%s, %s, %s)
-                            ''', ("delivery", cliente_id, fecha_entrega))
+                                # Programar entrega automática (3 días después)
+                                fecha_entrega = fecha_recogida + timedelta(days=3)
+                                cursor.execute('''
+                                    INSERT INTO entregas (tipo, cliente_id, fecha_entrega)
+                                    VALUES (%s, %s, %s)
+                                ''', ("delivery", cliente_id, fecha_entrega))
                             
-                            conn.commit()
-                            st.success(f"✅ Recogida programada para el {fecha}")
+                                conn.commit()
+                                st.success(f"""
+                                    ✅ Recogida domiciliaria programada:
+                                    - **Cliente:** {nombre}
+                                    - **Fecha recogida:** {fecha_recogida}
+                                    - **Entrega programada:** {fecha_entrega}
+                                """)
+                                st.balloons()
+                            
                         except Exception as e:
-                            conn.rollback()
-                            st.error(f"Error: {e}")
+                            if 'conn' in locals(): conn.rollback()
+                            st.error(f"🚫 Error al registrar: {str(e)}")
                         finally:
-                            cursor.close()
-                            conn.close()
-                else:
-                    for error in errores:
-                        st.error(error)
-
+                            if 'cursor' in locals(): cursor.close()
+                            if 'conn' in locals(): conn.close()
+                    else:
+                        for error in errores:
+                            st.error(error)
+                        
     # -------------------- SECCIÓN DATOS DE RECOJOS --------------------
     elif menu == "Datos de Recojos":
         st.header("📋 Datos de Recojos")
