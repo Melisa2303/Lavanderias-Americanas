@@ -513,10 +513,9 @@ else:
         
         if st.button("Registrar Recogida"):
             
-                if st.button("📦 Registrar Recogida", key="btn_recogida_del"):
-                    errores = []):
+                if st.button("📦 Registrar Recogida"):
                 
-                    # Validaciones
+                    # Validaciones de datos
                     if not nombre.strip():
                         errores.append("🚫 Nombre es obligatorio")
                     if not telefono.isdigit() or len(telefono) != 9:
